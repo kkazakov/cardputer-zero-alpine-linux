@@ -1,0 +1,903 @@
+harvested: 2026-11-18T13:45:50Z
+kernel: 6.18.33+rpt-rpi-v8
+image sha256:
+1b1002f7def184d6ca18d973f8b94622ccbe6552f3159cf1789ea955e833ed0a  /work/vendor/stock.img.xz
+
+== boot partition top level ==
+total 88527
+drwxr-xr-x    3 root     root          4608 Jan  1  1970 .
+drwxr-xr-x    1 root     root          4096 Nov 18 13:45 ..
+-rwxr-xr-x    1 root     root          1594 Jun  8 07:51 LICENCE.broadcom
+-rwxr-xr-x    1 root     root         32539 Jun  1 16:10 bcm2710-rpi-2-b.dtb
+-rwxr-xr-x    1 root     root         35252 Jun  1 16:10 bcm2710-rpi-3-b-plus.dtb
+-rwxr-xr-x    1 root     root         34731 Jun  1 16:10 bcm2710-rpi-3-b.dtb
+-rwxr-xr-x    1 root     root         33720 Jun  1 16:10 bcm2710-rpi-cm0.dtb
+-rwxr-xr-x    1 root     root         32302 Jun  1 16:10 bcm2710-rpi-cm3.dtb
+-rwxr-xr-x    1 root     root         33708 Jun  1 16:10 bcm2710-rpi-zero-2-w.dtb
+-rwxr-xr-x    1 root     root         33708 Jun  1 16:10 bcm2710-rpi-zero-2.dtb
+-rwxr-xr-x    1 root     root         56407 Jun  1 16:10 bcm2711-rpi-4-b.dtb
+-rwxr-xr-x    1 root     root         56411 Jun  1 16:10 bcm2711-rpi-400.dtb
+-rwxr-xr-x    1 root     root         39913 Jun  1 16:10 bcm2711-rpi-cm4-io.dtb
+-rwxr-xr-x    1 root     root         56928 Jun  1 16:10 bcm2711-rpi-cm4.dtb
+-rwxr-xr-x    1 root     root         53824 Jun  1 16:10 bcm2711-rpi-cm4s.dtb
+-rwxr-xr-x    1 root     root         78679 Jun  1 16:10 bcm2712-d-rpi-5-b.dtb
+-rwxr-xr-x    1 root     root         78679 Jun  1 16:10 bcm2712-rpi-5-b.dtb
+-rwxr-xr-x    1 root     root         78635 Jun  1 16:10 bcm2712-rpi-500.dtb
+-rwxr-xr-x    1 root     root         79624 Jun  1 16:10 bcm2712-rpi-cm5-cm4io.dtb
+-rwxr-xr-x    1 root     root         79690 Jun  1 16:10 bcm2712-rpi-cm5-cm5io.dtb
+-rwxr-xr-x    1 root     root         79665 Jun  1 16:10 bcm2712-rpi-cm5l-cm4io.dtb
+-rwxr-xr-x    1 root     root         79731 Jun  1 16:10 bcm2712-rpi-cm5l-cm5io.dtb
+-rwxr-xr-x    1 root     root         78683 Jun  1 16:10 bcm2712d0-rpi-5-b.dtb
+-rwxr-xr-x    1 root     root         52624 Jun  8 07:51 bootcode.bin
+-rwxr-xr-x    1 root     root           184 Jun  8 08:03 cmdline.txt
+-rwxr-xr-x    1 root     root          1496 Jun  8 07:54 config.txt
+-rwxr-xr-x    1 root     root          7370 Jun  8 07:51 fixup.dat
+-rwxr-xr-x    1 root     root          5499 Jun  8 07:51 fixup4.dat
+-rwxr-xr-x    1 root     root          3273 Jun  8 07:51 fixup4cd.dat
+-rwxr-xr-x    1 root     root          8494 Jun  8 07:51 fixup4db.dat
+-rwxr-xr-x    1 root     root          8494 Jun  8 07:51 fixup4x.dat
+-rwxr-xr-x    1 root     root          3273 Jun  8 07:51 fixup_cd.dat
+-rwxr-xr-x    1 root     root         10335 Jun  8 07:51 fixup_db.dat
+-rwxr-xr-x    1 root     root         10337 Jun  8 07:51 fixup_x.dat
+-rwxr-xr-x    1 root     root      22788189 Jun  8 08:03 initramfs8
+-rwxr-xr-x    1 root     root      22782396 Jun  8 08:03 initramfs_2712
+-rwxr-xr-x    1 root     root           145 Jun  8 08:04 issue.txt
+-rwxr-xr-x    1 root     root      10156403 Jun  8 07:51 kernel8.img
+-rwxr-xr-x    1 root     root      10159614 Jun  8 07:51 kernel_2712.img
+-rwxr-xr-x    1 root     root        108866 May 18  2026 logo_lcd_170_320_rgb565.bmp
+-rwxr-xr-x    1 root     root           921 Jun  8 07:53 meta-data
+-rwxr-xr-x    1 root     root          1730 Jun  8 07:53 network-config
+drwxr-xr-x    2 root     root         33280 Jun  8 07:53 overlays
+-rwxr-xr-x    1 root     root       3029888 Jun  8 07:51 start.elf
+-rwxr-xr-x    1 root     root       2305632 Jun  8 07:51 start4.elf
+-rwxr-xr-x    1 root     root        851740 Jun  8 07:51 start4cd.elf
+-rwxr-xr-x    1 root     root       3804392 Jun  8 07:51 start4db.elf
+-rwxr-xr-x    1 root     root       3053352 Jun  8 07:51 start4x.elf
+-rwxr-xr-x    1 root     root        851740 Jun  8 07:51 start_cd.elf
+-rwxr-xr-x    1 root     root       4876232 Jun  8 07:51 start_db.elf
+-rwxr-xr-x    1 root     root       3777000 Jun  8 07:51 start_x.elf
+-rwxr-xr-x    1 root     root        800952 May 18  2026 u-boot.bin
+-rwxr-xr-x    1 root     root          3277 Jun  8 07:53 user-data
+
+== boot DTBs ==
+bcm2710-rpi-2-b.dtb
+bcm2710-rpi-3-b-plus.dtb
+bcm2710-rpi-3-b.dtb
+bcm2710-rpi-cm0.dtb
+bcm2710-rpi-cm3.dtb
+bcm2710-rpi-zero-2-w.dtb
+bcm2710-rpi-zero-2.dtb
+bcm2711-rpi-4-b.dtb
+bcm2711-rpi-400.dtb
+bcm2711-rpi-cm4-io.dtb
+bcm2711-rpi-cm4.dtb
+bcm2711-rpi-cm4s.dtb
+bcm2712-d-rpi-5-b.dtb
+bcm2712-rpi-5-b.dtb
+bcm2712-rpi-500.dtb
+bcm2712-rpi-cm5-cm4io.dtb
+bcm2712-rpi-cm5-cm5io.dtb
+bcm2712-rpi-cm5l-cm4io.dtb
+bcm2712-rpi-cm5l-cm5io.dtb
+bcm2712d0-rpi-5-b.dtb
+
+== boot m5 overlays ==
+bmi270_overlay.dtbo
+bq27220.dtbo
+cardputerzero-overlay.dtbo
+m5ioe1-overlay.dtbo
+st7789v_m5stack.dtbo
+tca8418_m5stack.dtbo
+
+== /lib/modules/6.18.33+rpt-rpi-v8 top ==
+build
+dtb
+extra
+kernel
+modules.alias
+modules.alias.bin
+modules.builtin
+modules.builtin.alias.bin
+modules.builtin.bin
+modules.builtin.modinfo
+modules.dep
+modules.dep.bin
+modules.devname
+modules.order
+modules.softdep
+modules.symbols
+modules.symbols.bin
+modules.weakdep
+source
+
+== extra/ modules ==
+total 260
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 .
+drwxr-xr-x    5 root     root          4096 Jun  8 07:53 ..
+-rw-r--r--    1 root     root         16480 Jun  8 07:53 bmi270_core.ko
+-rw-r--r--    1 root     root         10376 Jun  8 07:53 bmi270_i2c.ko
+-rw-r--r--    1 root     root         31800 Jun  8 07:53 bq27xxx_battery.ko
+-rw-r--r--    1 root     root         10072 Jun  8 07:53 bq27xxx_battery_hdq.ko
+-rw-r--r--    1 root     root         27712 Jun  8 07:53 bq27xxx_battery_i2c.ko
+-rw-r--r--    1 root     root         55384 Jun  8 07:53 es8389_m5stack.ko
+-rw-r--r--    1 root     root         31232 Jun  8 07:53 m5ioe1.ko
+-rw-r--r--    1 root     root         18336 Jun  8 07:53 pwm_bl_m5stack.ko
+-rw-r--r--    1 root     root         18240 Jun  8 07:53 st7789v_m5stack.ko
+-rw-r--r--    1 root     root         18280 Jun  8 07:53 tca8418_keypad_m5stack.ko
+
+== stock config.txt ==
+kernel=u-boot.bin
+# For more options and information see
+# http://rptl.io/configtxt
+# Some settings may impact device functionality. See link above for details
+
+# Uncomment some or all of these to enable the optional hardware interfaces
+dtparam=i2c_arm=on
+dtparam=i2s=on
+dtparam=spi=on
+
+# Enable audio (loads snd_bcm2835)
+dtparam=audio=on
+
+# Additional overlays and parameters are documented
+# /boot/firmware/overlays/README
+
+# Automatically load overlays for detected cameras
+camera_auto_detect=0
+
+# Automatically load overlays for detected DSI displays
+display_auto_detect=1
+
+# Automatically load initramfs files, if found
+auto_initramfs=1
+
+# Enable DRM VC4 V3D driver
+dtoverlay=vc4-kms-v3d
+max_framebuffers=2
+
+# Don't have the firmware create an initial video= setting in cmdline.txt.
+# Use the kernel's default instead.
+disable_fw_kms_setup=1
+
+# Run in 64-bit mode
+arm_64bit=1
+
+# Disable compensation for displays with overscan
+disable_overscan=1
+
+# Run as fast as firmware / board allows
+arm_boost=1
+
+dtoverlay=imx219
+[cm4]
+# Enable host mode on the 2711 built-in XHCI USB controller.
+# This line should be removed if the legacy DWC2 controller is required
+# (e.g. for USB device mode) or if USB support is not required.
+otg_mode=1
+
+[cm5]
+dtoverlay=dwc2,dr_mode=host
+
+[all]
+enable_uart=1
+dtoverlay=cardputerzero-overlay
+dtoverlay=camera-gpio16-high-overlay
+dtoverlay=bq27220
+dtoverlay=gpio-ir,gpio_pin=13,gpio_pull=up
+dtoverlay=pwm-ir-tx,gpio_pin=12,func=4
+dtoverlay=spk-gpio24-high-overlay
+
+== stock cmdline.txt ==
+console=serial0,115200 console=tty1 root=PARTUUID=fbb0e72d-02 rootfstype=ext4 fsck.repair=yes rootwait resize quiet splash plymouth.ignore-serial-consoles cfg80211.ieee80211_regdom=AE
+
+== stock fstab ==
+proc            /proc           proc    defaults          0       0
+PARTUUID=fbb0e72d-01  /boot/firmware  vfat    defaults          0       2
+PARTUUID=fbb0e72d-02  /               ext4    defaults,noatime  0       1
+
+== firmware brcm ==
+total 13320
+drwxr-xr-x    2 root     root         16384 Jun  8 07:53 .
+drwxr-xr-x   22 root     root          4096 Jun  8 07:53 ..
+-rw-r--r--    1 root     root         30049 Oct  2  2025 BCM43430A1.hcd
+lrwxrwxrwx    1 root     root            14 Oct  2  2025 BCM43430A1.raspberrypi,3-model-b.hcd -> BCM43430A1.hcd
+lrwxrwxrwx    1 root     root            27 Oct  2  2025 BCM43430A1.raspberrypi,model-zero-2-w.hcd -> ../synaptics/SYN43430A1.hcd
+lrwxrwxrwx    1 root     root            14 Oct  2  2025 BCM43430A1.raspberrypi,model-zero-w.hcd -> BCM43430A1.hcd
+-rw-r--r--    1 root     root         44376 Oct  2  2025 BCM43430B0.hcd
+lrwxrwxrwx    1 root     root            27 Oct  2  2025 BCM43430B0.raspberrypi,model-zero-2-w.hcd -> ../synaptics/SYN43430B0.hcd
+-rw-r--r--    1 root     root          6746 Oct  2  2025 BCM4343A2.hcd
+lrwxrwxrwx    1 root     root            13 Oct  2  2025 BCM4343A2.raspberrypi,0-compute-module.hcd -> BCM4343A2.hcd
+-rw-r--r--    1 root     root         63806 Oct  2  2025 BCM4345C0.hcd
+lrwxrwxrwx    1 root     root            13 Oct  2  2025 BCM4345C0.raspberrypi,3-model-a-plus.hcd -> BCM4345C0.hcd
+lrwxrwxrwx    1 root     root            13 Oct  2  2025 BCM4345C0.raspberrypi,3-model-b-plus.hcd -> BCM4345C0.hcd
+lrwxrwxrwx    1 root     root            13 Oct  2  2025 BCM4345C0.raspberrypi,4-compute-module.hcd -> BCM4345C0.hcd
+lrwxrwxrwx    1 root     root            13 Oct  2  2025 BCM4345C0.raspberrypi,4-model-b.hcd -> BCM4345C0.hcd
+lrwxrwxrwx    1 root     root            13 Oct  2  2025 BCM4345C0.raspberrypi,5-compute-module.hcd -> BCM4345C0.hcd
+lrwxrwxrwx    1 root     root            13 Oct  2  2025 BCM4345C0.raspberrypi,5-model-b.hcd -> BCM4345C0.hcd
+lrwxrwxrwx    1 root     root            13 Oct  2  2025 BCM4345C0.raspberrypi,500.hcd -> BCM4345C0.hcd
+-rw-r--r--    1 root     root         55676 Oct  2  2025 BCM4345C5.hcd
+lrwxrwxrwx    1 root     root            13 Oct  2  2025 BCM4345C5.raspberrypi,4-compute-module.hcd -> BCM4345C5.hcd
+lrwxrwxrwx    1 root     root            13 Oct  2  2025 BCM4345C5.raspberrypi,400.hcd -> BCM4345C5.hcd
+-rw-r--r--    1 root     root         96224 Mar 21  2026 bcm43xx-0.fw
+-rw-r--r--    1 root     root           180 Mar 21  2026 bcm43xx_hdr-0.fw
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43012-sdio.bin -> ../cypress/cyfmac43012-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43012-sdio.clm_blob -> ../cypress/cyfmac43012-sdio.clm_blob
+-rw-r--r--    1 root     root        385067 Mar 21  2026 brcmfmac43143-sdio.bin
+-rw-r--r--    1 root     root        397312 Mar 21  2026 brcmfmac43143.bin
+-rw-r--r--    1 root     root        348160 Mar 21  2026 brcmfmac43236b.bin
+-rw-r--r--    1 root     root        459988 Mar 21  2026 brcmfmac43241b0-sdio.bin
+-rw-r--r--    1 root     root          2667 Mar 21  2026 brcmfmac43241b4-sdio.Advantech-MICA-071.txt
+-rw-r--r--    1 root     root          2699 Mar 21  2026 brcmfmac43241b4-sdio.Intel Corp.-VALLEYVIEW C0 PLATFORM.txt
+-rw-r--r--    1 root     root        403855 Mar 21  2026 brcmfmac43241b4-sdio.bin
+-rw-r--r--    1 root     root        408682 Mar 21  2026 brcmfmac43241b5-sdio.bin
+-rw-r--r--    1 root     root        479232 Mar 21  2026 brcmfmac43242a.bin
+-rw-r--r--    1 root     root        253748 Mar 21  2026 brcmfmac4329-sdio.bin
+-rw-r--r--    1 root     root          1509 Mar 21  2026 brcmfmac4330-sdio.Prowise-PT301.txt
+-rw-r--r--    1 root     root        223581 Mar 21  2026 brcmfmac4330-sdio.bin
+-rw-r--r--    1 root     root        451566 Mar 21  2026 brcmfmac4334-sdio.bin
+-rw-r--r--    1 root     root          1801 Mar 21  2026 brcmfmac43340-sdio.ASUSTeK COMPUTER INC.-TF103CE.txt
+-rw-r--r--    1 root     root          1687 Mar 21  2026 brcmfmac43340-sdio.Insyde-VESPA2.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43340-sdio.bin -> ../cypress/cyfmac43340-sdio.bin
+-rw-r--r--    1 root     root          1693 Mar 21  2026 brcmfmac43340-sdio.meegopad-t08.txt
+-rw-r--r--    1 root     root          1724 Mar 21  2026 brcmfmac43340-sdio.pov-tab-p1006w-data.txt
+-rw-r--r--    1 root     root          1689 Mar 21  2026 brcmfmac43340-sdio.predia-basic.txt
+-rw-r--r--    1 root     root        569291 Mar 21  2026 brcmfmac4335-sdio.bin
+-rw-r--r--    1 root     root          1143 Mar 21  2026 brcmfmac43362-sdio.ASUSTeK COMPUTER INC.-ME176C.txt
+-rw-r--r--    1 root     root           552 Mar 21  2026 brcmfmac43362-sdio.WC121.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43362-sdio.bin -> ../cypress/cyfmac43362-sdio.bin
+-rw-r--r--    1 root     root           803 Mar 21  2026 brcmfmac43362-sdio.cubietech,cubietruck.txt
+lrwxrwxrwx    1 root     root            28 Mar 21  2026 brcmfmac43362-sdio.kobo,aura.txt -> brcmfmac43362-sdio.WC121.txt
+lrwxrwxrwx    1 root     root            28 Mar 21  2026 brcmfmac43362-sdio.kobo,tolino-shine2hd.txt -> brcmfmac43362-sdio.WC121.txt
+lrwxrwxrwx    1 root     root            43 Mar 21  2026 brcmfmac43362-sdio.lemaker,bananapro.txt -> brcmfmac43362-sdio.cubietech,cubietruck.txt
+lrwxrwxrwx    1 root     root            30 Mar 21  2026 brcmfmac4339-sdio.bin -> ../cypress/cyfmac4339-sdio.bin
+-rw-r--r--    1 root     root           875 Mar 21  2026 brcmfmac43430-sdio.AP6212.txt
+-rw-r--r--    1 root     root           928 Mar 21  2026 brcmfmac43430-sdio.Hampoo-D2D3_Vi8A1.txt
+-rw-r--r--    1 root     root           831 Mar 21  2026 brcmfmac43430-sdio.MUR1DX.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43430-sdio.beagle,beaglev-starlight-jh7100-a1.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43430-sdio.beagle,beaglev-starlight-jh7100-r0.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43430-sdio.bin -> ../cypress/cyfmac43430-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43430-sdio.clm_blob -> ../cypress/cyfmac43430-sdio.clm_blob
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43430-sdio.friendlyarm,nanopi-r1.txt -> brcmfmac43430-sdio.AP6212.txt
+-rw-r--r--    1 root     root           951 Mar 21  2026 brcmfmac43430-sdio.ilife-S806.txt
+lrwxrwxrwx    1 root     root            23 Mar 21  2026 brcmfmac43430-sdio.raspberrypi,0-compute-module.bin -> brcmfmac43436s-sdio.bin
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43430-sdio.raspberrypi,0-compute-module.txt -> brcmfmac43436s-sdio.nolpo.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43430-sdio.raspberrypi,3-model-b.bin -> ../cypress/cyfmac43430-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43430-sdio.raspberrypi,3-model-b.clm_blob -> ../cypress/cyfmac43430-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43430-sdio.raspberrypi,3-model-b.txt -> brcmfmac43430-sdio.txt
+lrwxrwxrwx    1 root     root            23 Mar 21  2026 brcmfmac43430-sdio.raspberrypi,model-zero-2-w.bin -> brcmfmac43436s-sdio.bin
+lrwxrwxrwx    1 root     root            23 Mar 21  2026 brcmfmac43430-sdio.raspberrypi,model-zero-2-w.txt -> brcmfmac43436s-sdio.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43430-sdio.raspberrypi,model-zero-w.bin -> ../cypress/cyfmac43430-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43430-sdio.raspberrypi,model-zero-w.clm_blob -> ../cypress/cyfmac43430-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43430-sdio.raspberrypi,model-zero-w.txt -> brcmfmac43430-sdio.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43430-sdio.sinovoip,bananapi-m64.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43430-sdio.sinovoip,bpi-m2-plus.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43430-sdio.sinovoip,bpi-m2-ultra.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43430-sdio.sinovoip,bpi-m2-zero.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43430-sdio.sinovoip,bpi-m3.txt -> brcmfmac43430-sdio.AP6212.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43430-sdio.starfive,visionfive-v1.txt -> brcmfmac43430-sdio.AP6212.txt
+-rw-r--r--    1 root     root          1121 Mar 21  2026 brcmfmac43430-sdio.txt
+-rw-r--r--    1 root     root           989 Mar 21  2026 brcmfmac43430a0-sdio.ONDA-V80 PLUS.txt
+-rw-r--r--    1 root     root        382455 Mar 21  2026 brcmfmac43430a0-sdio.bin
+-rw-r--r--    1 root     root           908 Mar 21  2026 brcmfmac43430a0-sdio.ilife-S806.txt
+-rw-r--r--    1 root     root           951 Mar 21  2026 brcmfmac43430a0-sdio.jumper-ezpad-mini3.txt
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43430b0-sdio.raspberrypi,model-zero-2-w.bin -> brcmfmac43436-sdio.bin
+lrwxrwxrwx    1 root     root            27 Mar 21  2026 brcmfmac43430b0-sdio.raspberrypi,model-zero-2-w.clm_blob -> brcmfmac43436-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43430b0-sdio.raspberrypi,model-zero-2-w.txt -> brcmfmac43436-sdio.txt
+-rw-r--r--    1 root     root        416101 Mar 21  2026 brcmfmac43436-sdio.bin
+-rw-r--r--    1 root     root         11209 Mar 21  2026 brcmfmac43436-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43436-sdio.raspberrypi,model-zero-2-w.bin -> brcmfmac43436-sdio.bin
+lrwxrwxrwx    1 root     root            27 Mar 21  2026 brcmfmac43436-sdio.raspberrypi,model-zero-2-w.clm_blob -> brcmfmac43436-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43436-sdio.raspberrypi,model-zero-2-w.txt -> brcmfmac43436-sdio.txt
+-rw-r--r--    1 root     root          1706 Mar 21  2026 brcmfmac43436-sdio.txt
+-rw-r--r--    1 root     root        442211 Mar 21  2026 brcmfmac43436s-sdio.bin
+-rw-r--r--    1 root     root          1185 Mar 21  2026 brcmfmac43436s-sdio.nolpo.txt
+lrwxrwxrwx    1 root     root            23 Mar 21  2026 brcmfmac43436s-sdio.raspberrypi,0-compute-module.bin -> brcmfmac43436s-sdio.bin
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac43436s-sdio.raspberrypi,0-compute-module.txt -> brcmfmac43436s-sdio.nolpo.txt
+lrwxrwxrwx    1 root     root            23 Mar 21  2026 brcmfmac43436s-sdio.raspberrypi,model-zero-2-w.bin -> brcmfmac43436s-sdio.bin
+lrwxrwxrwx    1 root     root            23 Mar 21  2026 brcmfmac43436s-sdio.raspberrypi,model-zero-2-w.txt -> brcmfmac43436s-sdio.txt
+-rw-r--r--    1 root     root          1185 Mar 21  2026 brcmfmac43436s-sdio.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43439-sdio.bin -> ../cypress/cyfmac43439-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43439-sdio.clm_blob -> ../cypress/cyfmac43439-sdio.clm_blob
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43439-sdio.raspberrypi,0-compute-module.bin -> ../cypress/cyfmac43439-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43439-sdio.raspberrypi,0-compute-module.clm_blob -> ../cypress/cyfmac43439-sdio.clm_blob
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43439-sdio.raspberrypi,0-compute-module.txt -> ../cypress/cyfmac43439-sdio.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43439-sdio.txt -> ../cypress/cyfmac43439-sdio.txt
+-rw-r--r--    1 root     root          1475 Mar 21  2026 brcmfmac43455-sdio.AW-CM256SM.txt
+-rw-r--r--    1 root     root          2510 Mar 21  2026 brcmfmac43455-sdio.MINIX-NEO Z83-4.txt
+lrwxrwxrwx    1 root     root            44 Mar 21  2026 brcmfmac43455-sdio.Raspberry Pi Foundation-Raspberry Pi 4 Model B.txt -> brcmfmac43455-sdio.raspberrypi,4-model-b.txt
+lrwxrwxrwx    1 root     root            44 Mar 21  2026 brcmfmac43455-sdio.Raspberry Pi Foundation-Raspberry Pi Compute Module 4.txt -> brcmfmac43455-sdio.raspberrypi,4-model-b.txt
+-rw-r--r--    1 root     root          1723 Mar 21  2026 brcmfmac43455-sdio.acepc-t8.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.beagle,am5729-beagleboneai.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43455-sdio.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43455-sdio.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,pinebook-pro.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,pinenote-v1.1.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,pinenote-v1.2.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,pinephone-pro.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,quartz64-a.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,quartz64-b.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,rockpro64-v2.0.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,rockpro64-v2.1.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,soquartz-blade.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,soquartz-cm4io.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            33 Mar 21  2026 brcmfmac43455-sdio.pine64,soquartz-model-a.txt -> brcmfmac43455-sdio.AW-CM256SM.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,3-model-a-plus.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,3-model-a-plus.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,3-model-a-plus.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,3-model-b-plus.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,3-model-b-plus.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,3-model-b-plus.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,4-compute-module.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,4-compute-module.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,4-compute-module.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,4-model-b.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,4-model-b.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,4-model-b.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,5-compute-module.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,5-compute-module.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,5-compute-module.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,5-model-b.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,5-model-b.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,5-model-b.txt -> brcmfmac43455-sdio.txt
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,500.bin -> ../cypress/cyfmac43455-sdio.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,500.clm_blob -> ../cypress/cyfmac43455-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43455-sdio.raspberrypi,500.txt -> brcmfmac43455-sdio.txt
+-rw-r--r--    1 root     root          2074 Mar 21  2026 brcmfmac43455-sdio.txt
+-rw-r--r--    1 root     root        495898 Mar 21  2026 brcmfmac43456-sdio.bin
+-rw-r--r--    1 root     root          7163 Mar 21  2026 brcmfmac43456-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43456-sdio.raspberrypi,4-compute-module.bin -> brcmfmac43456-sdio.bin
+lrwxrwxrwx    1 root     root            27 Mar 21  2026 brcmfmac43456-sdio.raspberrypi,4-compute-module.clm_blob -> brcmfmac43456-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43456-sdio.raspberrypi,4-compute-module.txt -> brcmfmac43456-sdio.txt
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43456-sdio.raspberrypi,400.bin -> brcmfmac43456-sdio.bin
+lrwxrwxrwx    1 root     root            27 Mar 21  2026 brcmfmac43456-sdio.raspberrypi,400.clm_blob -> brcmfmac43456-sdio.clm_blob
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 brcmfmac43456-sdio.raspberrypi,400.txt -> brcmfmac43456-sdio.txt
+-rw-r--r--    1 root     root          2053 Mar 21  2026 brcmfmac43456-sdio.txt
+-rw-r--r--    1 root     root        626140 Mar 21  2026 brcmfmac4350-pcie.bin
+-rw-r--r--    1 root     root        623304 Mar 21  2026 brcmfmac4350c2-pcie.bin
+lrwxrwxrwx    1 root     root            30 Mar 21  2026 brcmfmac4354-sdio.bin -> ../cypress/cyfmac4354-sdio.bin
+lrwxrwxrwx    1 root     root            35 Mar 21  2026 brcmfmac4354-sdio.clm_blob -> ../cypress/cyfmac4354-sdio.clm_blob
+-rw-r--r--    1 root     root          2761 Mar 21  2026 brcmfmac4354-sdio.nvidia,p2371-2180.txt
+-rw-r--r--    1 root     root          3095 Mar 21  2026 brcmfmac4356-pcie.Intel Corporation-CHERRYVIEW D1 PLATFORM.txt
+-rw-r--r--    1 root     root          3099 Mar 21  2026 brcmfmac4356-pcie.Xiaomi Inc-Mipad2.txt
+lrwxrwxrwx    1 root     root            30 Mar 21  2026 brcmfmac4356-pcie.bin -> ../cypress/cyfmac4356-pcie.bin
+lrwxrwxrwx    1 root     root            35 Mar 21  2026 brcmfmac4356-pcie.clm_blob -> ../cypress/cyfmac4356-pcie.clm_blob
+-rw-r--r--    1 root     root          2515 Mar 21  2026 brcmfmac4356-pcie.gpd-win-pocket.txt
+-rw-r--r--    1 root     root          2610 Mar 21  2026 brcmfmac4356-sdio.AP6356S.txt
+lrwxrwxrwx    1 root     root            30 Mar 21  2026 brcmfmac4356-sdio.bin -> ../cypress/cyfmac4356-sdio.bin
+lrwxrwxrwx    1 root     root            35 Mar 21  2026 brcmfmac4356-sdio.clm_blob -> ../cypress/cyfmac4356-sdio.clm_blob
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac4356-sdio.firefly,firefly-rk3399.txt -> brcmfmac4356-sdio.AP6356S.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac4356-sdio.friendlyarm,nanopi-m4.txt -> brcmfmac4356-sdio.AP6356S.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac4356-sdio.khadas,vim2.txt -> brcmfmac4356-sdio.AP6356S.txt
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 brcmfmac4356-sdio.vamrs,rock960.txt -> brcmfmac4356-sdio.AP6356S.txt
+-rw-r--r--    1 root     root        557056 Mar 21  2026 brcmfmac43569.bin
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac43570-pcie.bin -> ../cypress/cyfmac43570-pcie.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac43570-pcie.clm_blob -> ../cypress/cyfmac43570-pcie.clm_blob
+-rw-r--r--    1 root     root        634361 Mar 21  2026 brcmfmac4358-pcie.bin
+-rw-r--r--    1 root     root        595472 Mar 21  2026 brcmfmac43602-pcie.ap.bin
+-rw-r--r--    1 root     root        635449 Mar 21  2026 brcmfmac43602-pcie.bin
+-rw-r--r--    1 root     root       1105361 Mar 21  2026 brcmfmac4366b-pcie.bin
+-rw-r--r--    1 root     root       1120971 Mar 21  2026 brcmfmac4366c-pcie.bin
+-rw-r--r--    1 root     root        623448 Mar 21  2026 brcmfmac4371-pcie.bin
+lrwxrwxrwx    1 root     root            30 Mar 21  2026 brcmfmac4373-sdio.bin -> ../cypress/cyfmac4373-sdio.bin
+lrwxrwxrwx    1 root     root            35 Mar 21  2026 brcmfmac4373-sdio.clm_blob -> ../cypress/cyfmac4373-sdio.clm_blob
+-rw-r--r--    1 root     root        479232 Mar 21  2026 brcmfmac4373.bin
+lrwxrwxrwx    1 root     root            31 Mar 21  2026 brcmfmac54591-pcie.bin -> ../cypress/cyfmac54591-pcie.bin
+lrwxrwxrwx    1 root     root            36 Mar 21  2026 brcmfmac54591-pcie.clm_blob -> ../cypress/cyfmac54591-pcie.clm_blob
+
+== firmware root-level cpz files ==
+-rw-r--r--    1 root     root          8192 Jun  8 07:53 /mnt/root/lib/firmware/bmi270-init-data.fw
+
+== asound.state? ==
+total 8
+drwxr-xr-x    2 root     root          4096 Jun 23  2025 .
+drwxr-xr-x   44 root     root          4096 Jun  8 08:03 ..
+
+== /lib/firmware root (dirs of interest) ==
+total 1424
+drwxr-xr-x   22 root     root          4096 Jun  8 07:53 .
+drwxr-xr-x   83 root     root          4096 Jun  8 07:58 ..
+-rw-r--r--    1 root     root        114688 Oct  2  2025 BCM2033-FW.bin
+-rw-r--r--    1 root     root          3245 Oct  2  2025 BCM2033-MD.hex
+-rw-r--r--    1 root     root          4588 Oct  2  2025 STLC2500_R4_00_03.ptc
+-rw-r--r--    1 root     root           281 Oct  2  2025 STLC2500_R4_00_06.ssf
+-rw-r--r--    1 root     root           292 Oct  2  2025 STLC2500_R4_02_02_WLAN.ssf
+-rw-r--r--    1 root     root           508 Oct  2  2025 STLC2500_R4_02_04.ptc
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 ar3k
+-rw-r--r--    1 root     root        153416 Mar 21  2026 ar5523.bin
+drwxr-xr-x   11 root     root          4096 Jun  8 07:53 ath10k
+drwxr-xr-x   11 root     root          4096 Jun  8 07:53 ath11k
+drwxr-xr-x    3 root     root          4096 Jun  8 07:53 ath12k
+-rw-r--r--    1 root     root        246804 Mar 21  2026 ath3k-1.fw
+drwxr-xr-x    5 root     root          4096 Jun  8 07:53 ath6k
+-rw-r--r--    1 root     root          8192 Jun  8 07:53 bmi270-init-data.fw
+drwxr-xr-x    2 root     root         16384 Jun  8 07:53 brcm
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 cypress
+-rw-r--r--    1 root     root         72684 Mar 21  2026 htc_7010.fw
+-rw-r--r--    1 root     root         50980 Mar 21  2026 htc_9271.fw
+-rw-r--r--    1 root     root        118888 Mar 21  2026 lbtf_usb.bin
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 libertas
+lrwxrwxrwx    1 root     root            19 Mar 21  2026 libertas_cs.fw -> libertas/cf8385.bin
+lrwxrwxrwx    1 root     root            26 Mar 21  2026 libertas_cs_helper.fw -> libertas/cf8385_helper.bin
+drwxr-xr-x   13 root     root          4096 Jun  8 07:53 mediatek
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 mrvl
+lrwxrwxrwx    1 root     root            20 Mar 21  2026 mt7601u.bin -> mediatek/mt7601u.bin
+lrwxrwxrwx    1 root     root            19 Mar 21  2026 mt7650.bin -> mediatek/mt7650.bin
+lrwxrwxrwx    1 root     root            19 Mar 21  2026 mt7662.bin -> mediatek/mt7662.bin
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 mt7662_rom_patch.bin -> mediatek/mt7662_rom_patch.bin
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 mwl8k
+drwxr-xr-x    4 root     root          4096 Jun  8 07:53 qca
+drwxr-xr-x    5 root     root          4096 Jun  8 07:52 raspberrypi
+drwxr-xr-x    3 root     root          4096 Jun  8 07:53 realtek
+lrwxrwxrwx    1 root     root            31 Feb 20  2026 regulatory.db -> /etc/alternatives/regulatory.db
+-rw-r--r--    1 root     root          6308 Feb 20  2026 regulatory.db-debian
+-rw-r--r--    1 root     root          6308 Feb 20  2026 regulatory.db-upstream
+lrwxrwxrwx    1 root     root            35 Feb 20  2026 regulatory.db.p7s -> /etc/alternatives/regulatory.db.p7s
+-rw-r--r--    1 root     root          1118 Feb 20  2026 regulatory.db.p7s-debian
+-rw-r--r--    1 root     root          1085 Feb 20  2026 regulatory.db.p7s-upstream
+-rw-r--r--    1 root     root          8192 Mar 21  2026 rt2561.bin
+-rw-r--r--    1 root     root          8192 Mar 21  2026 rt2561s.bin
+-rw-r--r--    1 root     root          8192 Mar 21  2026 rt2661.bin
+-rw-r--r--    1 root     root          8192 Mar 21  2026 rt2860.bin
+-rw-r--r--    1 root     root          8192 Mar 21  2026 rt2870.bin
+lrwxrwxrwx    1 root     root            10 Mar 21  2026 rt3070.bin -> rt2870.bin
+-rw-r--r--    1 root     root          4096 Mar 21  2026 rt3071.bin
+lrwxrwxrwx    1 root     root            10 Mar 21  2026 rt3090.bin -> rt2860.bin
+-rw-r--r--    1 root     root          4096 Mar 21  2026 rt3290.bin
+-rw-r--r--    1 root     root          2048 Mar 21  2026 rt73.bin
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 rtl_bt
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 rtl_nic
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 rtlwifi
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 rtw88
+drwxr-xr-x    2 root     root          4096 Jun  8 07:53 rtw89
+lrwxrwxrwx    1 root     root            19 Mar 21  2026 sd8385.bin -> libertas/sd8385.bin
+lrwxrwxrwx    1 root     root            26 Mar 21  2026 sd8385_helper.bin -> libertas/sd8385_helper.bin
+lrwxrwxrwx    1 root     root            22 Mar 21  2026 sd8686.bin -> libertas/sd8686_v8.bin
+lrwxrwxrwx    1 root     root            29 Mar 21  2026 sd8686_helper.bin -> libertas/sd8686_v8_helper.bin
+
+== extra module metadata ==
+--- bmi270_core.ko
+depends:        industrialio,industrialio-triggered-buffer
+name:           bmi270_core
+vermagic:       6.18.33+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64
+--- bmi270_i2c.ko
+depends:        regmap-i2c,bmi270_core
+name:           bmi270_i2c
+vermagic:       6.18.33+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64
+--- bq27xxx_battery.ko
+depends:        
+name:           bq27xxx_battery
+vermagic:       6.18.33+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64
+--- bq27xxx_battery_hdq.ko
+depends:        wire,bq27xxx_battery
+name:           bq27xxx_battery_hdq
+vermagic:       6.18.33+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64
+--- bq27xxx_battery_i2c.ko
+depends:        bq27xxx_battery
+name:           bq27xxx_battery_i2c
+vermagic:       6.18.33+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64
+--- es8389_m5stack.ko
+depends:        snd-soc-core,regmap-i2c,snd-pcm
+name:           es8389_m5stack
+vermagic:       6.18.33+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64
+--- m5ioe1.ko
+depends:        industrialio
+name:           m5ioe1
+vermagic:       6.18.33+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64
+--- pwm_bl_m5stack.ko
+depends:        backlight
+name:           pwm_bl_m5stack
+vermagic:       6.18.33+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64
+--- st7789v_m5stack.ko
+depends:        fbtft
+name:           st7789v_m5stack
+vermagic:       6.18.33+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64
+--- tca8418_keypad_m5stack.ko
+depends:        matrix-keymap
+name:           tca8418_keypad_m5stack
+vermagic:       6.18.33+rpt-rpi-v8 SMP preempt mod_unload modversions aarch64
+
+== stock initramfs8 module inventory (mkinitfs reference) ==
+
+== all overlays in stock boot ==
+README
+act-led.dtbo
+adafruit-st7735r.dtbo
+adafruit18.dtbo
+adau1977-adc.dtbo
+adau7002-simple.dtbo
+ads1015.dtbo
+ads1115.dtbo
+ads7846.dtbo
+adv7282m.dtbo
+adv728x-m.dtbo
+akkordion-iqdacplus.dtbo
+allo-boss-dac-pcm512x-audio.dtbo
+allo-boss2-dac-audio.dtbo
+allo-digione.dtbo
+allo-katana-dac-audio.dtbo
+allo-piano-dac-pcm512x-audio.dtbo
+allo-piano-dac-plus-pcm512x-audio.dtbo
+anyspi.dtbo
+apds9960.dtbo
+applepi-dac.dtbo
+arducam-64mp.dtbo
+arducam-pivariety.dtbo
+at86rf233.dtbo
+audioinjector-addons.dtbo
+audioinjector-bare-i2s.dtbo
+audioinjector-isolated-soundcard.dtbo
+audioinjector-ultra.dtbo
+audioinjector-wm8731-audio.dtbo
+audiosense-pi.dtbo
+audremap-pi5.dtbo
+audremap.dtbo
+balena-fin.dtbo
+bcm2712d0.dtbo
+bmi270_overlay.dtbo
+bq27220.dtbo
+camera-gpio16-high-overlay.dtbo
+camera-mux-2port.dtbo
+camera-mux-4port.dtbo
+camera-py12-high-overlay.dtbo
+cap1106.dtbo
+cardputerzero-overlay.dtbo
+chipcap2.dtbo
+chipdip-dac.dtbo
+cirrus-wm5102.dtbo
+cm-swap-i2c0.dtbo
+cma.dtbo
+crystalfontz-cfa050_pi_m.dtbo
+cutiepi-panel.dtbo
+dacberry400.dtbo
+dht11.dtbo
+dionaudio-kiwi.dtbo
+dionaudio-loco-v2.dtbo
+dionaudio-loco.dtbo
+disable-bt-pi5.dtbo
+disable-bt.dtbo
+disable-emmc2.dtbo
+disable-wifi-pi5.dtbo
+disable-wifi.dtbo
+dpi18.dtbo
+dpi18cpadhi.dtbo
+dpi24.dtbo
+draws.dtbo
+dwc-otg-deprecated.dtbo
+dwc2.dtbo
+edt-ft5406.dtbo
+enc28j60-spi2.dtbo
+enc28j60.dtbo
+exc3000.dtbo
+ezsound-6x8iso.dtbo
+fbtft.dtbo
+fe-pi-audio.dtbo
+fsm-demo.dtbo
+gc9a01.dtbo
+ghost-amp.dtbo
+goodix.dtbo
+googlevoicehat-soundcard.dtbo
+gpio-charger.dtbo
+gpio-fan.dtbo
+gpio-hog.dtbo
+gpio-ir-tx.dtbo
+gpio-ir.dtbo
+gpio-key.dtbo
+gpio-led.dtbo
+gpio-no-bank0-irq.dtbo
+gpio-no-irq.dtbo
+gpio-poweroff.dtbo
+gpio-shutdown.dtbo
+hat_map.dtb
+hd44780-i2c-lcd.dtbo
+hd44780-lcd.dtbo
+hdmi-backlight-hwhack-gpio.dtbo
+hifiberry-adc.dtbo
+hifiberry-adc8x.dtbo
+hifiberry-amp.dtbo
+hifiberry-amp100.dtbo
+hifiberry-amp3.dtbo
+hifiberry-amp4pro.dtbo
+hifiberry-dac.dtbo
+hifiberry-dac8x.dtbo
+hifiberry-dacplus-pro.dtbo
+hifiberry-dacplus-std.dtbo
+hifiberry-dacplus.dtbo
+hifiberry-dacplusadc.dtbo
+hifiberry-dacplusadcpro.dtbo
+hifiberry-dacplusdsp.dtbo
+hifiberry-dacplushd.dtbo
+hifiberry-digi-pro.dtbo
+hifiberry-digi.dtbo
+hifiberry-studio-dac8x-pro.dtbo
+hifiberry-studio-dac8x.dtbo
+highperi.dtbo
+hy28a.dtbo
+hy28b-2017.dtbo
+hy28b.dtbo
+i-sabre-q2m.dtbo
+i2c-bcm2708.dtbo
+i2c-fan.dtbo
+i2c-gpio.dtbo
+i2c-mux.dtbo
+i2c-pwm-pca9685a.dtbo
+i2c-rtc-gpio.dtbo
+i2c-rtc.dtbo
+i2c-sensor.dtbo
+i2c0-pi5.dtbo
+i2c0.dtbo
+i2c1-pi5.dtbo
+i2c1.dtbo
+i2c2-pi5.dtbo
+i2c3-pi5.dtbo
+i2c3.dtbo
+i2c4.dtbo
+i2c5.dtbo
+i2c6.dtbo
+i2s-dac.dtbo
+i2s-gpio28-31.dtbo
+i2s-master-dac.dtbo
+ilitek-ts-i2c.dtbo
+ilitek251x.dtbo
+imx219.dtbo
+imx258.dtbo
+imx283.dtbo
+imx290.dtbo
+imx296.dtbo
+imx327.dtbo
+imx335.dtbo
+imx378.dtbo
+imx415.dtbo
+imx462.dtbo
+imx477.dtbo
+imx500-pi5.dtbo
+imx500.dtbo
+imx519.dtbo
+imx708.dtbo
+interludeaudio-analog.dtbo
+interludeaudio-digital.dtbo
+iqaudio-codec.dtbo
+iqaudio-dac.dtbo
+iqaudio-dacplus.dtbo
+iqaudio-digi-wm8804-audio.dtbo
+iqs550.dtbo
+irs1125.dtbo
+jedec-spi-nor.dtbo
+justboom-both.dtbo
+justboom-dac.dtbo
+justboom-digi.dtbo
+ltc294x.dtbo
+m5ioe1-overlay.dtbo
+max98357a.dtbo
+maxtherm.dtbo
+mbed-dac.dtbo
+mcp23017.dtbo
+mcp23s17.dtbo
+mcp2515-can0.dtbo
+mcp2515-can1.dtbo
+mcp2515.dtbo
+mcp251xfd.dtbo
+mcp3008.dtbo
+mcp3202.dtbo
+mcp342x.dtbo
+media-center.dtbo
+merus-amp.dtbo
+midi-uart0-pi5.dtbo
+midi-uart0.dtbo
+midi-uart1-pi5.dtbo
+midi-uart1.dtbo
+midi-uart2-pi5.dtbo
+midi-uart2.dtbo
+midi-uart3-pi5.dtbo
+midi-uart3.dtbo
+midi-uart4-pi5.dtbo
+midi-uart4.dtbo
+midi-uart5.dtbo
+minipitft13.dtbo
+miniuart-bt.dtbo
+mipi-dbi-spi.dtbo
+mira220.dtbo
+mlx90640.dtbo
+mmc.dtbo
+mz61581.dtbo
+nospi10.dtbo
+ov2311.dtbo
+ov5647.dtbo
+ov64a40.dtbo
+ov7251.dtbo
+ov9281.dtbo
+overlay_map.dtb
+papirus.dtbo
+pca953x.dtbo
+pcf857x.dtbo
+pcie-32bit-dma-pi5.dtbo
+pcie-32bit-dma.dtbo
+pciex1-compat-pi5.dtbo
+pibell.dtbo
+pifacedigital.dtbo
+pifi-40.dtbo
+pifi-dac-hd.dtbo
+pifi-dac-zero.dtbo
+pifi-mini-210.dtbo
+piglow.dtbo
+pimidi.dtbo
+pineboards-hat-ai.dtbo
+pineboards-hatdrive-poe-plus.dtbo
+piscreen.dtbo
+piscreen2r.dtbo
+pisound-micro.dtbo
+pisound-pi5.dtbo
+pisound.dtbo
+pitft22.dtbo
+pitft28-capacitive.dtbo
+pitft28-resistive.dtbo
+pitft35-resistive.dtbo
+pivision.dtbo
+pps-gpio.dtbo
+pps-rp1.dtbo
+proto-codec.dtbo
+pwm-2chan.dtbo
+pwm-gpio-fan.dtbo
+pwm-gpio.dtbo
+pwm-ir-tx.dtbo
+pwm-pio.dtbo
+pwm.dtbo
+pwm1.dtbo
+qca7000-uart0.dtbo
+qca7000.dtbo
+ramoops-pi4.dtbo
+ramoops.dtbo
+rootmaster.dtbo
+rotary-encoder.dtbo
+rpi-backlight.dtbo
+rpi-codeczero.dtbo
+rpi-dacplus.dtbo
+rpi-dacpro.dtbo
+rpi-digiampplus.dtbo
+rpi-ft5406.dtbo
+rpi-fw-uart.dtbo
+rpi-poe-plus.dtbo
+rpi-poe.dtbo
+rpi-power-hat-b.dtbo
+rpi-power-hat-t.dtbo
+rpi-sense-v2.dtbo
+rpi-sense.dtbo
+rpi-tv.dtbo
+rra-digidac1-wm8741-audio.dtbo
+sainsmart18.dtbo
+sc16is750-i2c.dtbo
+sc16is752-i2c.dtbo
+sc16is75x-spi.dtbo
+sdhost.dtbo
+sdio-pi5.dtbo
+sdio.dtbo
+seeed-can-fd-hat-v1.dtbo
+seeed-can-fd-hat-v2.dtbo
+sh1106-spi.dtbo
+si446x-spi0.dtbo
+smi-dev.dtbo
+smi-nand.dtbo
+smi.dtbo
+spi-gpio35-39.dtbo
+spi-gpio40-45.dtbo
+spi-rtc.dtbo
+spi0-0cs.dtbo
+spi0-1cs-inverted.dtbo
+spi0-1cs.dtbo
+spi0-2cs.dtbo
+spi0-spidev2-gpio22-overlay.dtbo
+spi1-1cs.dtbo
+spi1-2cs.dtbo
+spi1-3cs.dtbo
+spi2-1cs-pi5.dtbo
+spi2-1cs.dtbo
+spi2-2cs-pi5.dtbo
+spi2-2cs.dtbo
+spi2-3cs.dtbo
+spi3-1cs-pi5.dtbo
+spi3-1cs.dtbo
+spi3-2cs-pi5.dtbo
+spi3-2cs.dtbo
+spi4-1cs.dtbo
+spi4-2cs.dtbo
+spi5-1cs-pi5.dtbo
+spi5-1cs.dtbo
+spi5-2cs-pi5.dtbo
+spi5-2cs.dtbo
+spi6-1cs.dtbo
+spi6-2cs.dtbo
+spk-gpio24-high-overlay.dtbo
+ssd1306-spi.dtbo
+ssd1306.dtbo
+ssd1327-spi.dtbo
+ssd1331-spi.dtbo
+ssd1351-spi.dtbo
+st7789v_m5stack.dtbo
+sunfounder-pipower3.dtbo
+sunfounder-pironman5.dtbo
+superaudioboard.dtbo
+sx150x.dtbo
+tc358743-audio.dtbo
+tc358743-pi5.dtbo
+tc358743.dtbo
+tca8418_m5stack.dtbo
+tinylcd35.dtbo
+tpm-slb9670.dtbo
+tpm-slb9673.dtbo
+uart0-pi5.dtbo
+uart0.dtbo
+uart1-pi5.dtbo
+uart1.dtbo
+uart2-pi5.dtbo
+uart2.dtbo
+uart3-pi5.dtbo
+uart3.dtbo
+uart4-pi5.dtbo
+uart4.dtbo
+uart5.dtbo
+udrc.dtbo
+ugreen-dabboard.dtbo
+upstream-pi4.dtbo
+upstream.dtbo
+vc4-fkms-v3d-pi4.dtbo
+vc4-fkms-v3d.dtbo
+vc4-kms-dpi-generic.dtbo
+vc4-kms-dpi-hyperpixel2r.dtbo
+vc4-kms-dpi-hyperpixel4.dtbo
+vc4-kms-dpi-hyperpixel4sq.dtbo
+vc4-kms-dpi-panel.dtbo
+vc4-kms-dsi-7inch.dtbo
+vc4-kms-dsi-generic.dtbo
+vc4-kms-dsi-ili79600-10-1inch.dtbo
+vc4-kms-dsi-ili9881-5inch.dtbo
+vc4-kms-dsi-ili9881-7inch.dtbo
+vc4-kms-dsi-lt070me05000-v2.dtbo
+vc4-kms-dsi-lt070me05000.dtbo
+vc4-kms-dsi-tdo-panel.dtbo
+vc4-kms-dsi-waveshare-800x480.dtbo
+vc4-kms-dsi-waveshare-panel-v2.dtbo
+vc4-kms-dsi-waveshare-panel.dtbo
+vc4-kms-kippah-7inch.dtbo
+vc4-kms-v3d-pi4.dtbo
+vc4-kms-v3d-pi5.dtbo
+vc4-kms-v3d.dtbo
+vc4-kms-vga666.dtbo
+vd55g1.dtbo
+vd56g3.dtbo
+vd65g4.dtbo
+vd66gy.dtbo
+vec-gpio-pi5.dtbo
+vga666.dtbo
+vl805.dtbo
+w1-gpio-pi5.dtbo
+w1-gpio-pullup-pi5.dtbo
+w1-gpio-pullup.dtbo
+w1-gpio.dtbo
+w5500.dtbo
+watterott-display.dtbo
+waveshare-can-fd-hat-mode-a.dtbo
+waveshare-can-fd-hat-mode-b.dtbo
+wifimac.dtbo
+wittypi.dtbo
+wm8960-soundcard.dtbo
+ws2812-pio.dtbo
+
+== dpkg kernel status ==
+Package: linux-image-6.18.33+rpt-rpi-2712
+Status: install ok installed
+Priority: optional
+--
+Package: linux-image-6.18.33+rpt-rpi-v8
+Status: install ok installed
+Priority: optional
+--
+Package: linux-image-rpi-2712
+Status: install ok installed
+Priority: optional
+--
+Package: linux-image-rpi-v8
+Status: install ok installed
+Priority: optional
+--
+Package: raspi-firmware
+Status: install ok installed
+Priority: optional

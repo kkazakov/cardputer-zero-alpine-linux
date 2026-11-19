@@ -1,0 +1,38 @@
+#!/bin/sh
+# /etc/local.d/cpz-leds.start — CPZ-Alpine
+#
+# THE FIX (found 2026-11-19 by live register-oscillation diffing over
+# ssh): the M5IOE1 expander's firmware plays a host-wait marquee on the
+# keyboard-LED GPIO pins (8/10/13, GPIO_O_H reg 0x06 oscillating) until
+# the host writes the READY handshake, reg 0xB0 = 1. M5 added exactly
+# this write to their v5 driver's probe (m5ioe1.c: reset_setup() after
+# REV==0x5A, "M5IOE1_READY set") — the legacy driver binary shipped in
+# the stock image predates it, so on our boots nobody ever sent it and
+# the LEDs cycled forever.
+#
+# Dead ends tried before this (kept here so nobody retries them):
+#   - v5-style LED mode regs 0xBD/0xBE/0xBF: inert on this firmware
+#   - LED_CFG 0x24 / LED pattern RAM 0x30+: write NAKs
+#   - PWM channels 0-2 duty 0: wrong block (ch 3 = LCD backlight)
+#   - GPIO_O latch writes 0x05/0x06: overwritten every demo frame
+#   - kernel gpiochip export of pins 7/8/10: same fate
+#
+# Implementation: i2cset -f (I2C_SLAVE_FORCE — the kernel m5ioe1 driver
+# owns the address, plain access gets EBUSY; -f is the standard debug
+# path, and the driver never touches reg 0xB0 after probe).
+
+[ -c /dev/i2c-1 ] || { echo "cpz-leds: no /dev/i2c-1, skipping" >&2; exit 0; }
+
+i2cset -f -y 1 0x4f 0xb0 1 2>/dev/null ||
+    echo "cpz-leds: READY handshake write failed" >&2
+
+V=$(i2cget -f -y 1 0x4f 0xb0 2>/dev/null)
+[ "$V" = "0x01" ] ||
+    echo "cpz-leds: READY reads back $V (expected 0x01)" >&2
+
+# the keypad driver's capslock LED (m5ioe1 GPIO pin 7, an input LED)
+for l in /sys/class/leds/input*::capslock/brightness; do
+    [ -e "$l" ] && echo 0 > "$l" 2>/dev/null
+done
+
+exit 0

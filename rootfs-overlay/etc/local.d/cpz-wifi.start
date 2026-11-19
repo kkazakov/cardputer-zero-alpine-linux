@@ -1,0 +1,38 @@
+#!/bin/sh
+# /etc/local.d/cpz-wifi.start — CPZ-Alpine
+#
+# Something soft-blocks wlan0 (and hci0) at every boot: cfg80211 then
+# refuses to bring the interface up and wpa_supplicant has nothing to
+# associate to.
+#
+# v0.10 BUG (fixed in v0.10.1): this script unblocked the radio fine,
+# but `networking` (boot runlevel, earlier) had already failed its
+# ifup wlan0 — udhcpc never ran against the now-unblocked, associated
+# radio. Field-verified on hardware: after boot, a bare `ifup wlan0`
+# completes the chain.
+#
+# v0.11: wpa_supplicant is now restarted here as well — cpz-restore
+# (runs earlier, alphabetically) may have just restored the user's
+# wpa_supplicant.conf from /cfg, and the daemon started at boot with
+# the baked-in copy. Cheap, idempotent, and makes restored credentials
+# apply without another reboot.
+#
+# After the link is up, best-effort reinstall of user packages whose
+# list was restored from /cfg (apk add of already-installed packages is
+# a quick no-op, so running this every boot is fine).
+
+rfkill unblock all 2>/dev/null
+
+if [ -d /sys/class/net/wlan0 ]; then
+    rc-service wpa_supplicant restart >/dev/null 2>&1
+    # give wpa a moment to associate on the fresh radio
+    sleep 3
+    ifup wlan0 >/dev/null 2>&1
+fi
+
+# user packages from the persistence partition (background, needs net)
+if [ -s /cfg/pkglist.txt ] && [ -d /cfg ]; then
+    ( apk add --no-cache $(cat /cfg/pkglist.txt) >/dev/null 2>&1 ) &
+fi
+
+exit 0

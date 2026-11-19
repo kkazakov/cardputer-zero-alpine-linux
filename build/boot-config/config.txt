@@ -1,0 +1,62 @@
+# CPZ-Alpine v0.1 — config.txt (console profile)
+#
+# Deltas from the M5 stock image (2026-06-08, sha256 1b1002f7...):
+#   - removed: kernel=u-boot.bin  → direct kernel8.img boot (the direction
+#     of M5's current pi-gen branch; one less moving part)
+#   - changed: dtparam=audio=on → off (CPZ audio is the ES8389 codec,
+#     not the firmware PWM audio path)
+#   - added:   gpu_mem=32 (proven on this board by M. Birth; console
+#     profile from PLAN §6)
+# Everything else is faithful to stock, one-change-at-a-time discipline.
+
+dtparam=i2c_arm=on
+dtparam=i2s=on
+dtparam=spi=on
+dtparam=audio=off
+
+camera_auto_detect=0
+display_auto_detect=1
+auto_initramfs=1
+
+# Enable DRM VC4 V3D driver (HDMI)
+dtoverlay=vc4-kms-v3d
+max_framebuffers=2
+
+disable_fw_kms_setup=1
+arm_64bit=1
+disable_overscan=1
+arm_boost=1
+
+# Camera (standard model; probes silently on Lite)
+dtoverlay=imx219
+
+[cm4]
+otg_mode=1
+
+[cm5]
+dtoverlay=dwc2,dr_mode=host
+
+[all]
+# USB-C dual role (v0.12): dwc2 otg —
+#   no cable attached  -> HOST mode: GL852G hub up, USB-A port live,
+#                         SR9900 ethernet enumerates (r8152 driver,
+#                         ID added per mainline lore patch 2026-06-13)
+#   cable to a desktop -> PERIPHERAL: g_serial gadget, /dev/ttyACMx on
+#                         the desktop (getty on ttyGS0)
+# If role detection misbehaves, force either side: dr_mode=host or
+# dr_mode=peripheral.
+dtoverlay=dwc2,dr_mode=otg
+
+# Console GPU memory profile (VideoCore)
+gpu_mem=32
+
+# UART exposed on the expansion bus; serial0 console in cmdline.txt
+enable_uart=1
+
+# CardputerZero board support (legacy combined overlay = stock-shipped DTBO)
+dtoverlay=cardputerzero-overlay
+dtoverlay=camera-gpio16-high-overlay
+dtoverlay=bq27220
+dtoverlay=gpio-ir,gpio_pin=13,gpio_pull=up
+dtoverlay=pwm-ir-tx,gpio_pin=12,func=4
+dtoverlay=spk-gpio24-high-overlay

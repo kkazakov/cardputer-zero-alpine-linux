@@ -1,0 +1,7 @@
+NAME="CPZ-Alpine"
+VERSION="0.8.0"
+BUILD_DATE="2026-11-19"
+KERNEL="6.18.33+rpt-rpi-v8 (M5 stock, Phase A graft)"
+BASE="Alpine Linux 3.24 (aarch64, musl, OpenRC)"
+HARVEST_SHA256="1b1002f7def184d6ca18d973f8b94622ccbe6552f3159cf1789ea955e833ed0a"
+NOTES="v0.12.0: ethernet — SR9900 via patched r8152 (mainline ID patch); dwc2 otg dual-role (host unplugged, serial cabled)"

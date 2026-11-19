@@ -1,0 +1,34 @@
+#!/bin/sh
+# /usr/local/bin/cpz-save — snapshot user state to the persistent data
+# partition (/cfg). Runs hourly from cron and can be run any time
+# before pulling the card for a reflash.
+#
+# Saved: /root, /home/cpz, dropbear keys, wpa_supplicant config,
+# hostname/hosts, everything in /etc/local.d and /etc/conf.d, the apk
+# world file, plus the installed-package list (/cfg/pkglist.txt —
+# re-installed automatically at the next boot after a reflash).
+
+CFG=/cfg
+
+if ! mountpoint $CFG >/dev/null 2>&1; then
+    mkdir -p $CFG
+    [ -b /dev/mmcblk0p3 ] && mount -t ext4 -o rw /dev/mmcblk0p3 $CFG 2>/dev/null
+fi
+
+mountpoint $CFG >/dev/null 2>&1 ||
+    { echo "cpz-save: no /cfg partition (flash with flash-cpz.sh first)" >&2
+      exit 1; }
+
+T=$CFG/save.tar.gz.new
+tar -czpf $T -C / \
+    root home/cpz \
+    etc/dropbear etc/wpa_supplicant etc/hostname etc/hosts \
+    etc/local.d etc/conf.d etc/apk/world \
+    2>/dev/null || { rm -f $T; echo "cpz-save: tar failed" >&2; exit 1; }
+mv $T $CFG/save.tar.gz
+
+apk info -q > $CFG/pkglist.txt 2>/dev/null
+sync
+
+echo "cpz-save: $(wc -c < $CFG/save.tar.gz) bytes -> $CFG/save.tar.gz"
+exit 0

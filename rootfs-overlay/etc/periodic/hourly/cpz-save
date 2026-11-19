@@ -1,0 +1,4 @@
+#!/bin/sh
+# /etc/periodic/hourly/cpz-save — automatic user-state snapshot.
+# Worst case after an unannounced reflash: under one hour of tweaks lost.
+exec /usr/local/bin/cpz-save >/dev/null 2>&1

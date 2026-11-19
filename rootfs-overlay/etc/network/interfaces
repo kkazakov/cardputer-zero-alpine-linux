@@ -1,0 +1,16 @@
+# /etc/network/interfaces — CPZ-Alpine
+# Wired Ethernet (USB-attached chip, driver per Stage 01 harvest):
+# DHCP on cold boot; udhcpc backgrounds instead of blocking the boot when
+# no cable is plugged (-b).
+
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+    udhcpc_opts -b -t 10 -T 3
+
+# Wi-Fi: add credentials to /etc/wpa_supplicant/wpa_supplicant.conf,
+# then uncomment to join at boot:
+#auto wlan0
+#iface wlan0 inet dhcp

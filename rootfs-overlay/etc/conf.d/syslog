@@ -1,0 +1,4 @@
+# /etc/conf.d/syslog — CPZ-Alpine
+# In-memory ring buffer only: no log writes to the SD card (R8/S09 policy).
+# Read with `logread`.
+SYSLOGD_OPTS="-C64"

@@ -1,0 +1,66 @@
+# cpz-sym-keymap.map — CPZ-Alpine v0.8 SYM-layer console keymap
+#
+# Binds the keycodes the TCA8418 keypad driver emits on the SYM layer to
+# the characters ACTUALLY PRINTED on the CardputerZero keycaps.
+#
+# v0.1..v0.7 loaded M5's stock keymap (tca8418_keypad_m5stack_keymap.map),
+# which follows M5's *design intent* — but the shipped keycaps disagree
+# with it on most of rows q..m (measured: sweep capture on hardware +
+# visual keycap inventory, Nov 2026):
+#
+#   key:  q  w  e  r  t  y  u  i  o  p
+#   cap:  ~  `  _  -  +  =  [  ]  {  }
+#   M5:   ~  `  +  -  /  \  {  }  [  ]        <- mismatch from e onward
+#
+#   key:  a  s  d  f  g  h  j  k  l
+#   cap:  ;  :  '  ↑  "  <  >  \  |
+#   M5:   ,  .  |  ↑  =  :  ;  _  ?
+#
+#   key:  z  x  c  v  b  n  m
+#   cap:  ←  ↓  →  ,  .  /  ?
+#   M5:   ←  ↓  →  <  >  '  "
+#
+# The digit row and q/w/r match the design; everything else is rebound
+# below per the caps. Arrows (z x c f) keep their standard kernel codes
+# (105/108/106/103) and need no binding here.
+
+# ── Digit row (1 at matrix row4col4, 2..0 at row0col0..col8) ──
+keycode 183 = exclam           # 1 → !
+keycode 184 = at                # 2 → @
+keycode 185 = numbersign        # 3 → #
+keycode 186 = dollar            # 4 → $
+keycode 187 = percent            # 5 → %
+keycode 188 = asciicircum        # 6 → ^
+keycode 189 = ampersand         # 7 → &
+keycode 190 = asterisk           # 8 → *
+keycode 191 = parenleft          # 9 → (
+keycode 192 = parenright        # 0 → )
+
+# ── Row q..p (matrix row1, col0..col9) ──
+keycode 193 = asciitilde        # q → ~
+keycode 194 = grave             # w → `
+keycode 195 = underscore        # e → _   (cap differs from M5 design "+")
+keycode 196 = minus             # r → -
+keycode 197 = plus              # t → +   (design "/")
+keycode 198 = equal             # y → =   (design "\")
+keycode 199 = bracketleft       # u → [   (design "{")
+keycode 200 = bracketright      # i → ]   (design "}")
+keycode 201 = braceleft         # o → {   (design "[")
+keycode 202 = braceright        # p → }   (design "]")
+
+# ── Row a..l (matrix row2, col0..col8; col3 = KEY_UP 103) ──
+keycode 231 = semicolon         # a → ;   (design ",")
+keycode 232 = colon             # s → :   (design ".")
+keycode 233 = apostrophe        # d → '   (design "|")
+keycode 209 = quotedbl          # g → "   (design "=")
+keycode 210 = less              # h → <   (design ":")
+keycode 211 = greater           # j → >   (design ";")
+keycode 212 = backslash         # k → \   (design "_")
+keycode 213 = bar               # l → |   (design "?")
+
+# ── Row z..m (matrix row3, col5..col8; col2..col4 = arrows) ──
+keycode 214 = comma             # v → ,   (design "<")
+keycode 215 = period            # b → .   (design ">")
+keycode 216 = slash             # n → /   (design "'")
+keycode 217 = question          # m → ?   (design "\"")
+# end

@@ -1,0 +1,25 @@
+# build outputs
+images/
+*.img
+*.img.gz
+*.img.xz
+*.tar
+build/verification-report.txt
+
+# secrets — user wifi credentials, NEVER commit (see AGENTS.md)
+build/wifi-secret/
+
+# field diagnostics captured from devices (session data, not build inputs)
+build/cpz-diag-field.txt
+build/cpz-keys.bin
+
+# upstream binary blobs — re-downloadable, pinned by hash in build/INPUTS.md
+vendor/*.img.xz
+
+# reference-only clones (upstream pinned in build/INPUTS.md)
+vendor/pi-gen/
+
+# editor / os noise
+.DS_Store
+*~
+.vscode/

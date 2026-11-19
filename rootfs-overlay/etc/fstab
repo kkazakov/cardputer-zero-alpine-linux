@@ -1,0 +1,15 @@
+# /etc/fstab — CPZ-Alpine
+# PARTUUIDs match the MBR disk id 0x10c0ffee written by build/30-image.sh.
+#
+# /boot is mounted by DEVICE NAME, not PARTUUID: busybox mount cannot
+# resolve PARTUUID= (boot log: "PARTUUID=10c0ffee-01: Can't lookup
+# blockdev"), so the v0.2..v0.9 entries never actually mounted. The SD
+# slot is always mmcblk0 on this board.
+#
+# /boot has passno 0 on purpose: Alpine's fsck -A would otherwise try to
+# check the vfat partition, and dosfsck is not installed in this image
+# (fsck failing in the boot runlevel aborts localmount).
+
+proc            /proc   proc    defaults                0 0
+/dev/mmcblk0p1  /boot   vfat    defaults,noatime       0 0
+PARTUUID=10c0ffee-02 /     ext4    defaults,noatime       0 1

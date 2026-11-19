@@ -1,0 +1,27 @@
+# /etc/inittab — CPZ-Alpine (M5Stack CardputerZero)
+#
+# Runlevels: sysinit (udev) -> boot (modules, networking...) -> default (getty etc.)
+
+::sysinit:/sbin/openrc sysinit
+::sysinit:/sbin/openrc boot
+::wait:/sbin/openrc default
+
+# Login console on the internal 320x170 LCD
+tty1::respawn:/sbin/getty 38400 tty1
+
+# Spare local console (Alt+F2 on a USB keyboard)
+tty2::respawn:/sbin/getty 38400 tty2
+
+# Serial rescue console — mini-UART on the 14-pin expansion bus.
+# The lifeline when LCD and HDMI are both broken (PLAN §4, stage-02 risk table).
+ttyS0::respawn:/sbin/getty -L 115200 ttyS0 vt100
+
+# USB-C serial console (CDC-ACM gadget via dwc2/g_serial). The primary
+# debugging lifeline: full-size keyboard + copy-paste from any desktop,
+# no USB-TTL adapter needed. Requires dtoverlay=dwc2,dr_mode=peripheral
+# in config.txt (this disables the USB-A host port while active).
+ttyGS0::respawn:/sbin/getty -L 115200 ttyGS0 vt100
+
+::ctrlaltdel:/sbin/reboot
+
+::shutdown:/sbin/openrc shutdown

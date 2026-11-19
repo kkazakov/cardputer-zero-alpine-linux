@@ -1,0 +1,63 @@
+#!/bin/sh
+# /etc/local.d/console.start — CPZ-Alpine
+#
+# Runs from OpenRC's `local` service (default runlevel), after the `modules`
+# boot service has loaded the LCD panel chain (st7789v + fbtft + backlight).
+#
+# 1. System-level keymap for the TCA8418 keypad incl. the SYM layer.
+#    The SYM layer is implemented in the keypad driver, which emits raw
+#    keycodes 183..233; the console only turns those into "!" "/" etc. once
+#    this keymap is loaded. Without it, SYM+1 emits 183 and nothing appears.
+# 2. Terminus 6x12 font: 53x14 characters on the 320x170 LCD.
+#    (v0.1..v0.4 used Spleentt 5x8 / 64x21 — tiny; too small to read.)
+# 3. R3 race fix: force a known blank state, then unblank honestly.
+#
+# v0.1 BUG (fixed in v0.3): loadkeys/setfont were called with no controlling
+# terminal, because the `local` service runs with stdin on /dev/null. They
+# failed with "Couldn't get a file descriptor referring to the console" and
+# the error was sent to /dev/null. -C /dev/tty1 is mandatory here.
+#
+# The panel is NOT fb0: the VideoCore firmware registers a "simple"
+# framebuffer first, so fbtft's panel lands on fb1 (cmdline fbcon=map:1).
+# Never hardcode an fb number — find the panel by its driver name.
+
+CONSOLE=/dev/tty1
+
+# wait briefly for the VT to exist (it is normally there long before this)
+i=0
+while [ ! -c "$CONSOLE" ] && [ $i -lt 20 ]; do
+    sleep 0.5
+    i=$((i + 1))
+done
+
+if [ -c "$CONSOLE" ]; then
+    # cpz-sym-keymap.map: binds SYM-layer keycodes to the characters
+    # printed on the ACTUAL keycaps (measured on hardware; the stock M5
+    # map follows a different legend design and gives wrong symbols on
+    # rows q..m — e.g. SYM+N printed ' instead of the / printed on N).
+    loadkeys -C "$CONSOLE" \
+        /usr/share/keymaps/cpz-sym-keymap.map ||
+        echo "cpz: loadkeys failed" >&2
+
+    # ter-u12n: Terminus 6x12 with full Unicode map.
+    setfont -C "$CONSOLE" \
+        /usr/share/consolefonts/ter-u12n.psf.gz ||
+        echo "cpz: setfont failed" >&2
+else
+    echo "cpz: $CONSOLE missing, keymap/font not applied" >&2
+fi
+
+PANEL_FB=""
+for f in /sys/class/graphics/fb*/name; do
+    [ -e "$f" ] || continue
+    case "$(cat "$f" 2>/dev/null)" in
+        *st7789*) PANEL_FB=$(basename "$(dirname "$f")"); break ;;
+    esac
+done
+
+if [ -n "$PANEL_FB" ]; then
+    echo 1 > "/sys/class/graphics/$PANEL_FB/blank" 2>/dev/null
+    echo 0 > "/sys/class/graphics/$PANEL_FB/blank" 2>/dev/null
+fi
+
+exit 0

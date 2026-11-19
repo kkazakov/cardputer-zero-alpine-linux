@@ -1,0 +1,9 @@
+CPZ-Alpine 0.1.0 — M5Stack CardputerZero
+Alpine Linux (musl + BusyBox + OpenRC), stock M5 kernel 6.18.33+rpt-rpi-v8
+
+First-flash test image. Known defaults (change them!):
+  root password: alpine
+  cpz password:  alpine
+
+Console on the internal LCD: tty1 · serial rescue: ttyS0 @ 115200
+Log buffer: logread · Network: eth0 dhcp; Wi-Fi needs wpa_supplicant.conf

@@ -1,0 +1,8 @@
+# /etc/crontabs/root — busybox crond schedule (Alpine convention)
+# The crond service is in the default runlevel; without this file it
+# idles and /etc/periodic/* never runs.
+
+# min	hour	day	month	weekday	command
+*/15	*	*	*	*	run-parts /etc/periodic/15min
+0	*	*	*	*	run-parts /etc/periodic/hourly
+0	2	*	*	*	run-parts /etc/periodic/daily
