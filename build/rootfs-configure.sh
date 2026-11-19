@@ -72,7 +72,12 @@ chown -R root:root /etc /usr/local/bin /boot /usr/share/keymaps \
 chmod 755 /etc/local.d/*.start 2>/dev/null || true
 chmod 755 /usr/local/bin/* 2>/dev/null || true
 chmod 644 /etc/profile.d/*.sh 2>/dev/null || true
-ls -l /etc/local.d/ /etc/profile.d/
+# v0.17.2: /etc/cpz carries the on-demand desktop config (sway.config) and
+# the hotplug consent mode. It shipped 0600 root-only, so `cpz-desktop
+# start` (sway as the cpz user) could not read its own config and died
+# with "Unable to open /etc/cpz/sway.config". Not secret — world-readable.
+chmod 644 /etc/cpz/* 2>/dev/null || true
+ls -l /etc/local.d/ /etc/profile.d/ /etc/cpz/
 
 # THE BIG ONE (v0.7): Docker's marker file /.dockerenv is created in every
 # container and `docker export` captured it into the rootfs. OpenRC's

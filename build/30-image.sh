@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.17.1
+VER=0.17.2
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -325,6 +325,36 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -x /mnt/rootfs/usr/local/bin/cpz-desktop ] \
         && echo "OK: cpz-desktop launcher present" \
         || echo "FAIL: cpz-desktop missing"
+    # v0.17.2 field fixes: Alpine splits NM's wifi support + CLI out of the
+    # main package. Without them nmcli is absent and NM marks wlan0
+    # unmanaged ("device type unmanaged by default") — the launcher's
+    # Wi-Fi toggle then does nothing.
+    [ -x /mnt/rootfs/usr/bin/nmcli ] \
+        && echo "OK: nmcli (NetworkManager CLI) installed" \
+        || echo "FAIL: nmcli missing — Wi-Fi/Ethernet settings dead"
+    ls /mnt/rootfs/usr/lib/NetworkManager/*/libnm-device-plugin-wifi.so \
+        >/dev/null 2>&1 \
+        && echo "OK: NetworkManager wifi device plugin installed" \
+        || echo "FAIL: NM wifi plugin missing — wlan0 stays unmanaged"
+    # Alpine installs wpa_supplicant under /sbin (not /usr/sbin).
+    if [ -x /mnt/rootfs/sbin/wpa_supplicant ] || [ -x /mnt/rootfs/usr/sbin/wpa_supplicant ]; then
+        echo "OK: wpa_supplicant (NM wifi backend) installed"
+    else
+        echo "FAIL: wpa_supplicant missing — NM cannot associate"
+    fi
+    # v0.17.2: the cpz session user must be able to read the desktop config
+    # (0600 root-only made sway die with "Unable to open sway.config").
+    for f in /mnt/rootfs/etc/cpz/sway.config /mnt/rootfs/etc/cpz/hdmi-mode; do
+        [ -n "$(find "$f" -perm -004 2>/dev/null)" ] \
+            && echo "OK: $(basename "$f") readable by the session user" \
+            || echo "FAIL: $(basename "$f") not world-readable — desktop session dies"
+    done
+    # v0.17.2: cpz-desktop waits for the seatd socket and forces the seatd
+    # libseat backend (logind is absent; without this sway fails to start).
+    grep -q '/run/seatd.sock' /mnt/rootfs/usr/local/bin/cpz-desktop \
+        && grep -q 'LIBSEAT_BACKEND=seatd' /mnt/rootfs/usr/local/bin/cpz-desktop \
+        && echo "OK: cpz-desktop waits for seatd + forces seatd backend" \
+        || echo "FAIL: cpz-desktop lacks the seatd readiness/backend fix"
     [ -s /mnt/rootfs/etc/cpz/sway.config ] \
         && echo "OK: session config present" \
         || echo "FAIL: no sway.config"
@@ -354,6 +384,12 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -x /mnt/rootfs/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch ] \
         && echo "OK: launcher binary present" \
         || echo "FAIL: launcher binary missing"
+    # v0.17.2: the volume path falls back to amixer when libpulse is absent
+    # (no pipewire-pulse on this image); the strings prove the fallback made
+    # it into the shipped binary.
+    grep -aq "amixer" /mnt/rootfs/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch \
+        && echo "OK: launcher carries the ALSA volume fallback (amixer)" \
+        || echo "FAIL: launcher binary has no ALSA volume fallback"
     [ -x /mnt/rootfs/usr/share/APPLaunch/bin/M5CardputerZero-Calculator ] \
         && echo "OK: calculator binary present" \
         || echo "FAIL: calculator binary missing"
