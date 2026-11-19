@@ -15,8 +15,8 @@ partition that survives reflashes.
 | Battery gauge (BQ27220) | ✅ | stock module was stale; rebuilt from M5's vendor source against exact distro headers |
 | Keyboard LEDs | ✅ | expander plays a host-wait marquee until the `READY` handshake (reg `0xB0`) — one `i2cset` at boot |
 | Wi-Fi (BCM43439) | ✅ | soft rfkill block lifted at boot; credentials baked at build time |
-| Ethernet (SR9900A) | ✅ v0.12 | mainline r8152 ID patch; dwc2 otg dual-role |
-| USB-C serial console | ✅ | CDC-ACM gadget (`ttyGS0` → `/dev/ttyACM*` on the desktop) |
+| Ethernet (SR9900A) | ✅ v0.12.2 | mainline r8152 ID patch, dwc2 host mode — field-verified: DHCP lease + ~2 ms RTT traffic |
+| USB-C serial console | ⚠️ retired | dwc2 is host-only for ethernet + USB-A (otg dead-end logged in config.txt); Wi-Fi/Ethernet SSH is the remote path |
 | SSH (dropbear) | ✅ | over Wi-Fi |
 | Persistence across reflashes | ✅ | `CPZDATA` partition + hourly snapshots + boot restore |
 | Bluetooth, HDMI desktop, audio | ⏳ | Phase B |

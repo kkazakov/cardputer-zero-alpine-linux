@@ -61,9 +61,11 @@ unused for now (fine for testing; we'll auto-grow later).
       boot this is not needed at all.
 - [ ] **T4 — USB host**: plug a USB flash drive into the USB-A port →
       `dmesg | tail` shows usb-storage; plug a USB keyboard → types.
-- [ ] **T5 — Ethernet**: **unsupported in Phase A** — the stock kernel has
-      no SR9900A driver (`sr9900` absent). Cable stays dark; tracked for a
-      Phase-B kernel build.
+- [ ] **T5 — Ethernet**: cable in → `ip a` shows eth0 with a DHCP lease;
+      `ping -I eth0 -c3 1.1.1.1`. Since v0.12.2 the SR9900A is driven
+      by a patched r8152 (mainline ID 0x0fe6:0x9900), dwc2 in host
+      mode — field-verified on hardware. (The USB-C serial gadget was
+      retired for host mode; Wi-Fi/Ethernet SSH is the remote path.)
 - [ ] **T6 — SSH**: from your LAN: `ssh root@<ip>` (password `alpine`).
       Key-only lockdown comes later (S09) — don't expose this image.
 - [ ] **T7 — Wi-Fi chips present**: `ip a` shows wlan0 (unconfigured —
