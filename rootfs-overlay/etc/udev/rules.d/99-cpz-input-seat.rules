@@ -1,0 +1,10 @@
+# CPZ-Alpine: the internal keypad belongs to seat0.
+#
+# M5's stock 99-cardputer-zero-keyboard.rules puts the TCA8418 keypad on
+# a private seat ("seat-cardputer-zero") for their dual-session
+# launcher. Our desktop is single-seat by design: the HDMI session and
+# the internal keyboard are ONE machine, one seat. This rule sorts
+# after M5's (cpz > cardputer) so this assignment wins.
+ACTION!="remove", SUBSYSTEM=="input", KERNEL=="event*", \
+  ENV{ID_PATH}=="platform-3f804000.i2c", \
+  ENV{ID_SEAT}="seat0"
