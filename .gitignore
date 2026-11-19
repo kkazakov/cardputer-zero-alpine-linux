@@ -23,3 +23,5 @@ vendor/pi-gen/
 .DS_Store
 *~
 .vscode/
+# local working clone (user reference checkout — vendor it deliberately if wanted)
+launcher/
