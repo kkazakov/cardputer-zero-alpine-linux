@@ -51,6 +51,58 @@ Flash with `build/flash-cpz.sh` (see README) — it preserves the
 `CPZDATA` partition that carries user state across reflashes.
 Raw `dd` works too but drops persistence for that flash.
 
+## Copying artifacts to the desktop machine
+
+**Every user-facing artifact lands in exactly one place on the
+desktop:**
+
+```
+~/Downloads/cpz/
+```
+
+| Artifact | Built by | Notes |
+|---|---|---|
+| `cpz-alpine-X.Y.Z.img.gz` + `.sha256` | `build/30-image.sh` → `images/` | always ship these two together |
+| `flash-cpz.sh` | `build/flash-cpz.sh` | keep the desktop copy in sync with the repo |
+| `FLASH-AND-TEST.md` | `docs/` | optional, when its content changed |
+| device pulls (`camera-test.jpg`, diag files, …) | ad-hoc | same folder, so the user finds everything in one place |
+
+The desktop is the machine with the SD-card reader: user `wasp`,
+LAN address `192.168.88.158`. (If this file is ever shared outside
+the household, redact that line.)
+
+### The route (build sandbox → desktop)
+
+The workspace runs on the build host; the desktop is separate. Transfers
+go through the long-lived `cpz-xfer` container (host network, holds the
+transfer SSH key at `/tmp/k` inside it, never in this repo):
+
+```sh
+# 1. stage into the transfer container
+docker cp images/cpz-alpine-X.Y.Z.img.gz       cpz-xfer:/tmp/
+docker cp images/cpz-alpine-X.Y.Z.img.gz.sha256 cpz-xfer:/tmp/
+
+# 2. scp to the desktop
+docker exec cpz-xfer sh -c '
+  scp -i /tmp/k -o StrictHostKeyChecking=no \
+      /tmp/cpz-alpine-X.Y.Z.img.gz /tmp/cpz-alpine-X.Y.Z.img.gz.sha256 \
+      wasp@192.168.88.158:Downloads/cpz/'
+
+# 3. verify ON the desktop + drop the previous image (keep only newest)
+docker exec cpz-xfer sh -c '
+  ssh -i /tmp/k -o StrictHostKeyChecking=no wasp@192.168.88.158 \
+    "cd ~/Downloads/cpz && sha256sum -c cpz-alpine-X.Y.Z.img.gz.sha256"'
+```
+
+`flash-cpz.sh` picks the newest `cpz-alpine-*.img.gz` by mtime, so old
+images left around are harmless but confusing — remove them.
+
+Git pushes use the same route (bundle → scp → push from the desktop,
+which holds the GitHub auth): `build/push-remote.sh` with
+`PUSH_HOST=wasp@192.168.88.158`, or the manual equivalent in that file.
+Never copy keys, credentials or `build/wifi-secret/` along with
+artifacts.
+
 ## Never commit
 
 - `build/wifi-secret/` — the user's Wi-Fi credentials
