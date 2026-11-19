@@ -1,8 +1,8 @@
-# FLASH AND TEST — CPZ-Alpine 0.5.0
+# FLASH AND TEST — CPZ-Alpine 0.17.0
 
-This is the first bootable CPZ-Alpine image. It was built entirely offline
-from M5's own stock image (Phase-A kernel graft) — **it has never touched
-real hardware**. Everything below marked [TEST] is unverified until you run it.
+Built offline from M5's own stock image (Phase-A kernel graft). Versions
+through v0.16 are **hardware-verified** per the README table; items marked
+[TEST] below are new in this image and need one device pass.
 
 ## What you're flashing
 
@@ -34,24 +34,47 @@ unused for now (fine for testing; we'll auto-grow later).
 
 1. No splash. The LCD stays dark for a few seconds (kernel + OpenRC
    starting — this build loads the panel driver from the rootfs, not an
-   initramfs — that's the accepted R2 fallback: "console appears seconds
+   initramfs — that's the accepted R2 fallback: "UI appears seconds
    later, still usable").
-2. Then boot text should appear on the **internal LCD** (fbcon on fb0,
-   64×21 chars, Spleentt 5×8) and keep scrolling to a login prompt.
-
-   `cpz login:` — log in as **root**, password **alpine**
-   (also user **cpz** / **alpine**, member of wheel).
-3. The shell prompt shows battery % + SoC temp once the gauge probes:
-   `[100% 47.0°C ~]#`
+2. Then the **APPLaunch launcher UI** takes over the internal LCD
+   (v0.17: the panel belongs to the launcher, OpenRC `applaunch`
+   service; the kernel console lives on HDMI/serial, `fbcon=map:0` —
+   exactly the stock M5 image's split). You get the status bar (clock,
+   battery, Wi-Fi state) over the app carousel. No login prompt on
+   the panel; the console login is root/**alpine** on HDMI (tty1) or
+   serial0 when debugging.
+3. Wi-Fi joins automatically when an NM profile is baked (built from
+   `build/wifi-secret`) — otherwise join from Settings → Wi-Fi.
 
 ## Test checklist (in order)
 
-- [ ] **T1 — LCD console**: login prompt appears on the internal screen.
-      If it's blank: does the backlight come on? Can you switch VTs?
-      (Alt+F2 from a USB keyboard on tty2.)
-- [ ] **T2 — keyboard**: type on the CPZ keyboard. A–Z, 0–9, punctuation,
-      Enter, Backspace, arrows. The SYM layer: `/` should be **SYM+N**
-      (per printed legends), `!` SYM+1 etc.
+- [ ] **T1 — launcher on LCD**: the APPLaunch carousel appears on the
+      internal screen within ~15 s of power-on. Cards cycle ←/→
+      (or Z/X); Enter opens, ESC backs out / long-press returns home.
+      The status bar shows the clock and a battery percentage.
+      If the panel is dark: check `rc-service applaunch status` over
+      SSH — `/var/log/applaunch.log` carries the launcher's stderr.
+- [ ] **T1b — console split**: with HDMI plugged, tty1 shows the login
+      (`root`/**alpine**); the LCD never flickers when the console
+      redraws (kernel console is on HDMI, not on the launcher's fb).
+- [ ] **T2 — keyboard (through the launcher)** [TEST]: ←/→ (Z/X) cycle the
+      carousel; Enter opens the focused card; ESC backs out, long-press
+      ESC returns home from anywhere. The SYM layer: open the **CLI**
+      terminal card and type — `/` should be **SYM+N** (per printed
+      legends), `!` SYM+1 etc.; SHIFT/FN modifiers behave per keycap.
+      The launcher reads raw evdev and maps the SYM layer from
+      `/usr/share/keymaps/tca8418_keypad_m5stack_keymap.map` — the same
+      field measurements as the console map.
+- [ ] **T2b — Calculator** [TEST]: open the Calculator card; digits,
+      operators, `=` compute; ESC (long-press) returns to the carousel.
+- [ ] **T2c — Settings** [TEST]: Settings → Screen → Brightness steps the
+      backlight; Speaker → volume keys work (ES8389 via ALSA); Wi-Fi →
+      Networks lists APs and joins with a password (NetworkManager
+      writes the profile; a reboot rejoins automatically); Date & Time →
+      Set Manually moves the status-bar clock and *Write RTC?* persists
+      it across a reboot. The System menu shows Storage / Licenses /
+      Reboot but NO Software-updater page, and no Developer/ADB section —
+      those are RPi-OS-only and hidden on Alpine.
 - [ ] **T3 — serial rescue, no adapter needed**: if the LCD is ever dark,
       use the USB-C port as a serial gadget. Apply
       `build/offline-fix/fix-card.sh` to the flashed card from the desktop

@@ -67,7 +67,8 @@ echo "== overlay permissions =="
 # host's uid (1000), which maps to the image's `cpz` user — /etc files
 # were shipping as cpz:cpz. Everything under /etc, /usr/local/bin and
 # /boot is root-owned, period.
-chown -R root:root /etc /usr/local/bin /boot 2>/dev/null || true
+chown -R root:root /etc /usr/local/bin /boot /usr/share/keymaps \
+    /usr/share/consolefonts 2>/dev/null || true
 chmod 755 /etc/local.d/*.start 2>/dev/null || true
 chmod 755 /usr/local/bin/* 2>/dev/null || true
 chmod 644 /etc/profile.d/*.sh 2>/dev/null || true
@@ -94,6 +95,15 @@ mkdir -p /boot
 # — cpz-restore.start mounts it if present, so raw-dd cards (no p3)
 # boot without a localmount failure.
 mkdir -p /cfg
+
+# v0.14 launcher state + NetworkManager profile dirs:
+#  /var/lib/applaunch — the launcher's settings + config.json
+#  /etc/NetworkManager/system-connections — Wi-Fi profiles (PSK-bearing,
+#  created root-only; 30-image.sh bakes a keyfile here when the build
+#  has build/wifi-secret)
+mkdir -p /var/lib/applaunch
+mkdir -p -m 0700 /etc/NetworkManager/system-connections
+chown root:root /var/lib/applaunch /etc/NetworkManager 2>/dev/null || true
 
 echo "== timezone =="
 ln -sf /usr/share/zoneinfo/Europe/Sofia /etc/localtime
@@ -124,12 +134,18 @@ svc_add modules boot
 svc_add seedrng boot
 svc_add sysctl boot
 svc_add syslog boot
-svc_add networking boot
-svc_add wpa_supplicant boot
+# v0.14: NetworkManager replaces ifupdown-ng + wpa_supplicant (the
+# launcher's Wi-Fi/Ethernet settings drive nmcli). The standalone
+# `networking` and `wpa_supplicant` services must NOT run alongside NM —
+# two supplicants fight over wlan0.
+svc_add networkmanager default
+svc_add dbus default
 svc_add dropbear default
 svc_add crond default
 svc_add local default
 svc_add bluetooth default
+# `applaunch` (the launcher UI, OpenRC) is added to default by
+# build/25-launcher.sh together with its init script.
 svc_add killprocs shutdown
 svc_add mount-ro shutdown
 svc_add savecache shutdown

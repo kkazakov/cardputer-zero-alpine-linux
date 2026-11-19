@@ -3,22 +3,27 @@
 An extremely light, purpose-built **Alpine Linux** operating system for the
 **M5Stack CardputerZero** (Raspberry Pi CM0 / RP3A0, Broadcom BCM2837).
 
-**Status: v0.12.0 — hardware-verified.** Boot to LCD login with the
-full keyboard (keycap-correct SYM layer), battery + SoC temperature in the
-prompt, Wi-Fi and Ethernet, USB-C serial console, SSH, and a persistence
-partition that survives reflashes.
+**Status: v0.17.0.** The launcher face of the stock M5 image, on Alpine:
+the APPLaunch UI (carousel, settings, calculator, CLI terminal) owns the
+internal LCD, boots straight into it, and keeps the on-demand HDMI
+desktop, SSH, battery/keyboard/audio/Ethernet/Wi-Fi of the releases
+below — all field-verified through v0.16.
 
 | Subsystem | State | Notes |
 |---|---|---|
-| Boot → LCD login | ✅ | 320×170 fbtft panel is the console (`fbcon=map:1`) |
-| Keyboard (46-key + SYM/FN) | ✅ | keymap rebuilt from measured keycap legends — see `rootfs-overlay/usr/share/keymaps/cpz-sym-keymap.map` |
+| **Launcher UI (APPLaunch)** | ✅ v0.17.0 | the LCD's face: upstream M5 carousel UI, built as a musl aarch64 native binary (`build/25-launcher.sh`), OpenRC `applaunch` service; panel owned by the launcher, kernel console on HDMI |
+| Launcher: Calculator | ✅ | `M5CardputerZero-Calculator` built from the same launcher checkout |
+| Launcher: Settings | ✅ | Wi-Fi/Ethernet (NetworkManager), Bluetooth, brightness/volume, battery + BQ calibrate, Date & Time (manual set works without systemd's timedate1); RPi-OS-only pages (systemd updater, ADB) hidden |
+| Launcher: CLI terminal | ✅ | interactive bash over a PTY, rendered in-LVGL |
+| Console | ✅ v0.17.0 | kernel console on HDMI (`fbcon=map:0`), serial + SSH; the 320×170 panel belongs to the launcher |
+| Keyboard (46-key + SYM/FN) | ✅ | keymap rebuilt from measured keycap legends — console: `cpz-sym-keymap.map`; launcher evdev path: `tca8418_keypad_m5stack_keymap.map` (same measurements) |
 | Battery gauge (BQ27220) | ✅ | stock module was stale; rebuilt from M5's vendor source against exact distro headers |
 | Keyboard LEDs | ✅ | expander plays a host-wait marquee until the `READY` handshake (reg `0xB0`) — one `i2cset` at boot |
-| Wi-Fi (BCM43439) | ✅ | soft rfkill block lifted at boot; credentials baked at build time |
+| Wi-Fi (BCM43439) | ✅ v0.17.0 | NetworkManager manages wlan0/eth0 (the launcher's Wi-Fi settings drive `nmcli`); credentials baked as an NM keyfile, or joined on-device via Settings → Wi-Fi |
 | Ethernet (SR9900A) | ✅ v0.12.2 | mainline r8152 ID patch, dwc2 host mode — field-verified: DHCP lease + ~2 ms RTT traffic |
 | USB-C serial console | ⚠️ retired | dwc2 is host-only for ethernet + USB-A (otg dead-end logged in config.txt); Wi-Fi/Ethernet SSH is the remote path |
 | SSH (dropbear) | ✅ | over Wi-Fi |
-| Persistence across reflashes | ✅ | `CPZDATA` partition + hourly snapshots + boot restore |
+| Persistence across reflashes | ✅ | `CPZDATA` partition + hourly snapshots + boot restore (launcher settings + NM profiles included) |
 | HDMI desktop (on demand) | ✅ v0.14.0 | `cpz-desktop start` → sway+foot on HDMI in ~5 s, ~57 MiB resident; nothing graphical at boot; hotplug consent via udev (`ask` mode) |
 | Bluetooth, camera func, IR func | ⏳ | controller verified; capture + remote tests pending |
 
@@ -91,6 +96,9 @@ runtime PM.
 
 ## Sources
 
+- [CardputerZero launcher — upstream](https://github.com/CardputerZero/launcher)
+  and the [Alpine fork](https://github.com/kkazakov/cardputer-zero-launcher-alpine)
+  this image builds (`launcher/` subfolder, branch `alpine`)
 - [M5Stack CardputerZero product docs](https://docs.m5stack.com/en/CardputerZero)
 - [M5Stack CardputerZero image guide](https://docs.m5stack.com/en/compute/cardputerzero/image)
 - ["Taming the CardputerZero" — M. Birth](https://blog.mbirth.uk/2026/11/11/taming-the-cardputerzero.html)

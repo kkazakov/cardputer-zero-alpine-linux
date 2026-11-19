@@ -1,0 +1,54 @@
+# /usr/share/keymaps/tca8418_keypad_m5stack_keymap.map — CPZ-Alpine
+#
+# The APPLaunch launcher (evdev/libinput path) parses this file at
+# startup (cp0_keyboard_keymap.c) and binds the TCA8418 keypad driver's
+# SYM-layer keycodes — raw codes 183..233 that the driver emits for
+# Opt/SYM+key — to their characters.
+#
+# The symbol assignments are the FIELD-MEASUREED keycap legends (the
+# same measurements as /usr/share/keymaps/cpz-sym-keymap.map, the
+# console map). The stock M5 table shipped in the harvest follows a
+# different legend design and prints wrong symbols on rows q..m
+# (e.g. its keycode 216 is apostrophe while the N keycap carries /).
+# Only the SYM-layer keycodes are listed here on purpose: the launcher's
+# custom-keymap path ignores modifier state, so binding base-layer keys
+# would break Shift on letters.
+#
+# (Lines that do not match "keycode N = sym" are ignored by the parser,
+# so the comments below are harmless.)
+
+keycode 183 = exclam
+keycode 184 = at
+keycode 185 = numbersign
+keycode 186 = dollar
+keycode 187 = percent
+keycode 188 = asciicircum
+keycode 189 = ampersand
+keycode 190 = asterisk
+keycode 191 = parenleft
+keycode 192 = parenright
+
+keycode 193 = asciitilde
+keycode 194 = grave
+keycode 195 = underscore
+keycode 196 = minus
+keycode 197 = plus
+keycode 198 = equal
+keycode 199 = bracketleft
+keycode 200 = bracketright
+keycode 201 = braceleft
+keycode 202 = braceright
+
+keycode 231 = semicolon
+keycode 232 = colon
+keycode 233 = apostrophe
+keycode 209 = quotedbl
+keycode 210 = less
+keycode 211 = greater
+keycode 212 = backslash
+keycode 213 = bar
+
+keycode 214 = comma
+keycode 215 = period
+keycode 216 = slash
+keycode 217 = question

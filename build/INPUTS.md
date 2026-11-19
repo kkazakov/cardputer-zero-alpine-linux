@@ -1,7 +1,31 @@
-# build/INPUTS.md — pinned build inputs (v0.5.0)
+# build/INPUTS.md — pinned build inputs (v0.17.0)
 
 Everything this build consumes, with content hashes. Reproduce by
 fetching these exact artifacts; the build is deterministic against them.
+
+## APPLaunch launcher (v0.17+)
+
+- Repository: `launcher/` — a checkout of
+  https://github.com/kkazakov/cardputer-zero-launcher-alpine, **branch
+  `alpine`** (the fork of CardputerZero/launcher; its `master` tracks
+  upstream untouched). The image build records the exact commit in the
+  verification report; `build/25-launcher.sh` builds it.
+- Built natively inside `linux/arm64 alpine:3.24` (musl) — the same
+  release as the rootfs, so the binary's dynamic link set (freetype,
+  libcurl, libinput, libxkbcommon, udev, gio, libstdc++) resolves
+  against exactly the image's packages.
+- Submodules at upstream pins: `SDK` = m5stack/M5Stack_Linux_Libs
+  (`1846503d…`), `projects/Calculator` = CardputerZero/Calculator
+  (`946c778e…`).
+- `projects/Calculator` carries one build-time patch,
+  `launcher/deploy/alpine/patches/calculator-native-fbdev.patch`
+  (upstream hardwires every non-cross Calculator build to the SDL
+  simulator; the patch adds the native FBDEV+EVDEV path). Applied
+  idempotently by the build; the submodule pin is untouched.
+- Launcher SYM keymap: `rootfs-overlay/usr/share/keymaps/
+  tca8418_keypad_m5stack_keymap.map` — generated from the same measured
+  keycap legends as `cpz-sym-keymap.map` (the harvest's stock map prints
+  wrong symbols on rows q..m and is deliberately overridden).
 
 ## M5 stock CardputerZero image (Phase-A BSP source)
 

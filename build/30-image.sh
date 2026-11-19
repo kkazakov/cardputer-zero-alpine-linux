@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.16.0
+VER=0.17.0
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -93,18 +93,32 @@ tar -xf $WORK/rootfs.tar -C /mnt/rootfs
 cp $REPO/rootfs-overlay/etc/hostname /mnt/rootfs/etc/hostname
 cp $REPO/rootfs-overlay/etc/hosts /mnt/rootfs/etc/hosts
 printf 'nameserver 1.1.1.1\n' > /mnt/rootfs/etc/resolv.conf
-# Wi-Fi credentials injection (v0.10): build/wifi-secret/ is NOT part of
-# the repo — it holds this user's wpa_supplicant.conf + interfaces, fetched
-# from the device. When present, every built image carries them, so
-# reflashes never lose the network config again.
-if [ -f $REPO/build/wifi-secret/wpa_supplicant.conf ]; then
-    cp $REPO/build/wifi-secret/wpa_supplicant.conf \
-       /mnt/rootfs/etc/wpa_supplicant/wpa_supplicant.conf
-    cp $REPO/build/wifi-secret/interfaces \
-       /mnt/rootfs/etc/network/interfaces
-    echo "== wifi credentials injected (build/wifi-secret) =="
+# Wi-Fi credentials injection (v0.10; v0.17 — NetworkManager keyfile):
+# build/wifi-secret/ is NOT part of the repo — it holds this user's
+# wpa_supplicant.conf, fetched from the device. When present, the SSID
+# and PSK are converted into an NM keyfile profile (the standalone
+# supplicant service no longer runs; NM spawns its own) so every built
+# image carries the credentials and reflashes never lose the network.
+# A missing secret ships no profile — Wi-Fi is then joined on-device
+# through the launcher's Settings → Wi-Fi UI (which writes the same
+# keyfile directory).
+SSID=$(sed -n 's/^[[:space:]]*ssid="//;s/"[[:space:]]*$//p' \
+    $REPO/build/wifi-secret/wpa_supplicant.conf 2>/dev/null | head -1)
+[ -z "$SSID" ] && SSID=$(sed -n 's/^[[:space:]]*ssid=//p' \
+    $REPO/build/wifi-secret/wpa_supplicant.conf 2>/dev/null | head -1 | tr -d '[:space:]')
+PSK=$(sed -n 's/^[[:space:]]*psk="//;s/"[[:space:]]*$//p' \
+    $REPO/build/wifi-secret/wpa_supplicant.conf 2>/dev/null | head -1)
+[ -z "$PSK" ] && PSK=$(sed -n 's/^[[:space:]]*psk=//p' \
+    $REPO/build/wifi-secret/wpa_supplicant.conf 2>/dev/null | head -1 | tr -d '[:space:]')
+if [ -n "$SSID" ] && [ -n "$PSK" ]; then
+    mkdir -p -m 0700 /mnt/rootfs/etc/NetworkManager/system-connections
+    printf '[connection]\nid=cpz-wifi\ntype=wifi\nautoconnect=true\n\n[wifi]\nssid=%s\nmode=infrastructure\n\n[wifi-security]\nkey-mgmt=wpa-psk\npsk=%s\n\n[ipv4]\nmethod=auto\n\n[ipv6]\nmethod=auto\n' \
+        "$SSID" "$PSK" \
+        > /mnt/rootfs/etc/NetworkManager/system-connections/cpz-wifi.nmconnection
+    chmod 0600 /mnt/rootfs/etc/NetworkManager/system-connections/cpz-wifi.nmconnection
+    echo "== wifi credentials injected as NM keyfile (build/wifi-secret) =="
 else
-    echo "== no build/wifi-secret/ — shipping template wifi config =="
+    echo "== no build/wifi-secret/ — Wi-Fi joins on-device via launcher Settings =="
 fi
 # docker bind-mount point captured as an empty dir — remove it
 rm -rf /mnt/rootfs/work
@@ -145,11 +159,15 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     cat /mnt/boot/cmdline.txt
     grep -q "root=PARTUUID=$DISK_ID-02" /mnt/boot/cmdline.txt \
         && echo "OK: root PARTUUID matches disk id" || echo "FAIL: PARTUUID mismatch"
-    # v0.1 shipped fbcon=map:0 and the panel never got the console (it is
-    # fb1; the VideoCore firmware owns fb0). Field-fixed in v0.2.
-    grep -q 'fbcon=map:1' /mnt/boot/cmdline.txt \
-        && echo "OK: fbcon=map:1 (console on the fbtft panel)" \
-        || echo "FAIL: fbcon map is not 1 — panel will stay dark"
+    # v0.2..v0.16 history: fbcon was mapped onto the panel (map:1) to give
+    # the LCD a login console. v0.17: the panel is owned by the APPLaunch
+    # launcher UI (OpenRC `applaunch`, draws directly to the fbtft fb);
+    # the kernel console lives on HDMI like the stock M5 image. A shared
+    # fb would have kernel writes scribbling over the UI — never map
+    # fbcon back onto the panel.
+    grep -q 'fbcon=map:0' /mnt/boot/cmdline.txt \
+        && echo "OK: fbcon=map:0 (console on HDMI; panel owned by launcher)" \
+        || echo "FAIL: fbcon map is not 0 — console would fight the launcher"
     grep -qw 'rw' /mnt/boot/cmdline.txt \
         && echo "OK: root mounted rw" || echo "FAIL: no rw in cmdline"
     echo "--- kernel + DTB + overlays:"
@@ -248,12 +266,24 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q "mmcblk0p1" /mnt/rootfs/etc/fstab \
         && echo "OK: /boot mounted by device name" \
         || echo "FAIL: fstab still uses PARTUUID (busybox cannot resolve)"
-    grep -q "^auto wlan0" /mnt/rootfs/etc/network/interfaces \
-        && echo "OK: wlan0 auto at boot" \
-        || echo "FAIL: wlan0 not enabled in interfaces"
-    grep -q "ssid=" /mnt/rootfs/etc/wpa_supplicant/wpa_supplicant.conf \
-        && echo "OK: wifi credentials baked in" \
-        || echo "FAIL: no network block in wpa conf"
+    # v0.17: NetworkManager owns wlan0/eth0; the ifupdown file must NOT
+    # claim devices (a listed device would fight NM for the interface).
+    grep -q "^auto lo$" /mnt/rootfs/etc/network/interfaces \
+        && grep -qv "^auto wlan0\|^auto eth0" /mnt/rootfs/etc/network/interfaces \
+        && echo "OK: interfaces is lo-only (NetworkManager owns devices)" \
+        || echo "FAIL: interfaces still claims wlan0/eth0"
+    # baked Wi-Fi is an NM keyfile now; absent secret = joined on device
+    NMKEY=/mnt/rootfs/etc/NetworkManager/system-connections/cpz-wifi.nmconnection
+    if [ -s "$NMKEY" ]; then
+        grep -q "^ssid=" "$NMKEY" && grep -q "^psk=" "$NMKEY" \
+            && echo "OK: wifi credentials baked as NM keyfile" \
+            || echo "FAIL: NM keyfile missing ssid/psk"
+        [ "$(stat -c %a "$NMKEY")" = "600" ] \
+            && echo "OK: NM keyfile is 0600" \
+            || echo "FAIL: NM keyfile permissions not 0600"
+    else
+        echo "OK: no baked wifi — join via launcher Settings → Wi-Fi"
+    fi
     # v0.13: audio + bluetooth, field-verified on hardware
     [ -s /mnt/rootfs/var/lib/alsa/asound.state ] \
         && grep -q ES8389 /mnt/rootfs/var/lib/alsa/asound.state \
@@ -317,6 +347,74 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     else
         echo "OK: seatd not in any runlevel (on-demand contract holds)"
     fi
+    # v0.17: APPLaunch launcher — the UI that owns the internal LCD.
+    # Built natively (musl aarch64) by build/25-launcher.sh from the
+    # launcher/ checkout (alpine branch), installed at /usr/share/APPLaunch
+    # and started by OpenRC as the root user.
+    [ -x /mnt/rootfs/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch ] \
+        && echo "OK: launcher binary present" \
+        || echo "FAIL: launcher binary missing"
+    [ -x /mnt/rootfs/usr/share/APPLaunch/bin/M5CardputerZero-Calculator ] \
+        && echo "OK: calculator binary present" \
+        || echo "FAIL: calculator binary missing"
+    [ -d /mnt/rootfs/usr/share/APPLaunch/share/images ] \
+        && echo "OK: launcher resource tree present" \
+        || echo "FAIL: launcher resource tree missing"
+    [ -d /mnt/rootfs/usr/share/APPLaunch/applications ] \
+        && echo "OK: launcher .desktop dir present" \
+        || echo "FAIL: launcher applications dir missing"
+    [ -x /mnt/rootfs/etc/init.d/applaunch ] \
+        && echo "OK: applaunch OpenRC init script present" \
+        || echo "FAIL: applaunch init script missing"
+    [ -L /mnt/rootfs/etc/runlevels/default/applaunch ] \
+        && echo "OK: applaunch service in default runlevel" \
+        || echo "FAIL: applaunch service not enabled"
+    grep -q "command=\"/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch\"" \
+        /mnt/rootfs/etc/init.d/applaunch \
+        && echo "OK: applaunch runs the installed binary" \
+        || echo "FAIL: applaunch command path wrong"
+    # launcher runtime link set (musl) + CLI terminal shell
+    [ -e /mnt/rootfs/usr/lib/libfreetype.so.6 ] \
+        && echo "OK: freetype (launcher) installed" \
+        || echo "FAIL: freetype missing"
+    [ -e /mnt/rootfs/usr/lib/libinput.so.10 ] \
+        && echo "OK: libinput (keypad) installed" \
+        || echo "FAIL: libinput missing"
+    [ -e /mnt/rootfs/usr/lib/libgio-2.0.so.0 ] \
+        && echo "OK: glib/gio (NetworkManager dbus) installed" \
+        || echo "FAIL: glib missing"
+    [ -x /mnt/rootfs/bin/bash ] \
+        && echo "OK: bash (launcher CLI terminal) installed" \
+        || echo "FAIL: bash missing — launcher CLI terminal dead"
+    # v0.17: NetworkManager replaced ifupdown-ng/wpa_supplicant boot path
+    [ -x /mnt/rootfs/usr/sbin/NetworkManager ] \
+        && echo "OK: NetworkManager installed" \
+        || echo "FAIL: NetworkManager missing"
+    [ -L /mnt/rootfs/etc/runlevels/default/networkmanager ] \
+        && echo "OK: networkmanager service in default runlevel" \
+        || echo "FAIL: networkmanager service not enabled"
+    [ -L /mnt/rootfs/etc/runlevels/default/dbus ] \
+        && echo "OK: dbus service in default runlevel" \
+        || echo "FAIL: dbus service not enabled"
+    if [ -e /mnt/rootfs/etc/runlevels/boot/networking ] \
+        || [ -e /mnt/rootfs/etc/runlevels/boot/wpa_supplicant ]; then
+        echo "FAIL: ifupdown/wpa service still enabled — two managers fight over wlan0"
+    else
+        echo "OK: no ifupdown/wpa service (NetworkManager alone owns the interfaces)"
+    fi
+    # launcher runtime keymap for the SYM layer (keycap-corrected; the
+    # launcher's evdev path parses this file, the console uses
+    # cpz-sym-keymap.map with the same measurements)
+    [ -s /mnt/rootfs/usr/share/keymaps/tca8418_keypad_m5stack_keymap.map ] \
+        && grep -q "^keycode 216 = slash" \
+            /mnt/rootfs/usr/share/keymaps/tca8418_keypad_m5stack_keymap.map \
+        && echo "OK: launcher SYM keymap (keycap-corrected) shipped" \
+        || echo "FAIL: launcher SYM keymap missing or wrong"
+    # launcher state dir (settings.json/config.json) — init script recreates,
+    # but the image must ship it for first boot
+    [ -d /mnt/rootfs/var/lib/applaunch ] \
+        && echo "OK: /var/lib/applaunch state dir present" \
+        || echo "FAIL: /var/lib/applaunch missing"
     # v0.11: persistence layer
     [ -d /mnt/rootfs/cfg ] \
         && echo "OK: /cfg mountpoint exists" \
