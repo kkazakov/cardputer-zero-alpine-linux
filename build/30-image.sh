@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.12.0
+VER=0.12.1
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -220,20 +220,21 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ ! -e /mnt/rootfs/.dockerenv ] \
         && echo "OK: no /.dockerenv (OpenRC will run ALL services)" \
         || echo "FAIL: /.dockerenv present — OpenRC thinks it is a container"
-    # v0.12: USB-C dual role — host (ethernet + USB-A) when unplugged,
-    # gadget (serial) when cabled to a desktop
-    grep -q "dtoverlay=dwc2,dr_mode=otg" /mnt/boot/config.txt \
-        && echo "OK: dwc2 in otg mode (host+gadget dual role)" \
-        || echo "FAIL: dwc2 not otg — ethernet and serial cannot coexist"
+    # v0.12.1: dwc2 host-only — ethernet + USB-A. The serial gadget is
+    # sacrificed (wifi ssh is the remote path); otg/peripheral modes
+    # are documented dead ends in config.txt.
+    grep -q "dtoverlay=dwc2,dr_mode=host" /mnt/boot/config.txt \
+        && echo "OK: dwc2 in host mode (ethernet + USB-A)" \
+        || echo "FAIL: dwc2 not host — ethernet cannot come up"
     grep -q "v0FE6p9900" /mnt/rootfs/lib/modules/$KVER/modules.alias \
         && echo "OK: SR9900 ethernet autoload alias present" \
         || echo "FAIL: SR9900 usb alias missing — patched r8152 not installed"
     grep -q "^r8152$" /mnt/rootfs/etc/modules \
         && echo "OK: r8152 force-loaded at boot" \
         || echo "FAIL: r8152 not in /etc/modules"
-    grep -q "^g_serial$" /mnt/rootfs/etc/modules \
-        && echo "OK: g_serial force-loaded at boot" \
-        || echo "FAIL: g_serial not in /etc/modules"
+    grep -q "^#ttyGS0" /mnt/rootfs/etc/inittab \
+        && echo "OK: ttyGS0 getty disabled (matches host mode)" \
+        || echo "FAIL: ttyGS0 getty enabled without a gadget UDC"
     grep -q "ttyGS0" /mnt/rootfs/etc/inittab \
         && echo "OK: getty on ttyGS0 (USB serial login)" \
         || echo "FAIL: no getty on ttyGS0"

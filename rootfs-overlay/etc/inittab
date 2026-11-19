@@ -16,11 +16,11 @@ tty2::respawn:/sbin/getty 38400 tty2
 # The lifeline when LCD and HDMI are both broken (PLAN §4, stage-02 risk table).
 ttyS0::respawn:/sbin/getty -L 115200 ttyS0 vt100
 
-# USB-C serial console (CDC-ACM gadget via dwc2/g_serial). The primary
-# debugging lifeline: full-size keyboard + copy-paste from any desktop,
-# no USB-TTL adapter needed. Requires dtoverlay=dwc2,dr_mode=peripheral
-# in config.txt (this disables the USB-A host port while active).
-ttyGS0::respawn:/sbin/getty -L 115200 ttyGS0 vt100
+# USB-C serial gadget console — DISABLED in v0.12.1: dwc2 runs in host
+# mode for ethernet + USB-A (see config.txt for the otg dead-end log).
+# To re-enable: dr_mode=peripheral in config.txt, g_serial in
+# /etc/modules, and uncomment this line.
+#ttyGS0::respawn:/sbin/getty -L 115200 ttyGS0 vt100
 
 ::ctrlaltdel:/sbin/reboot
 

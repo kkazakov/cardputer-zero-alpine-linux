@@ -22,9 +22,8 @@ m5ioe1
 # reached brcmfmac. Force-load both early.
 i2c-dev
 brcmfmac
-# v0.9: CDC-ACM serial gadget on USB-C — binds to the dwc2 UDC and
-# creates ttyGS0 (getty runs on it from inittab).
-g_serial
+# v0.12.1: g_serial REMOVED — dwc2 runs host-only for ethernet +
+# USB-A (otg/peripheral modes documented as dead ends in config.txt).
 # v0.12: SR9900 ethernet via patched r8152 (usb 0x0fe6:0x9900, ID
 # added per mainline lore.kernel.org patch). Harmless with no device.
 r8152

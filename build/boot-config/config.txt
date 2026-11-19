@@ -37,15 +37,21 @@ otg_mode=1
 dtoverlay=dwc2,dr_mode=host
 
 [all]
-# USB-C dual role (v0.12): dwc2 otg —
-#   no cable attached  -> HOST mode: GL852G hub up, USB-A port live,
-#                         SR9900 ethernet enumerates (r8152 driver,
-#                         ID added per mainline lore patch 2026-06-13)
-#   cable to a desktop -> PERIPHERAL: g_serial gadget, /dev/ttyACMx on
-#                         the desktop (getty on ttyGS0)
-# If role detection misbehaves, force either side: dr_mode=host or
-# dr_mode=peripheral.
-dtoverlay=dwc2,dr_mode=otg
+# USB dwc2 mode (v0.12.1): HOST — GL852G hub up, USB-A port live,
+# SR9900 ethernet enumerates (r8152 driver, ID added per mainline lore
+# patch 2026-06-13).
+#
+# DEAD END (v0.12.0, do not retry): dr_mode=otg. On this board dwc2
+# gets no role-detection input — with otg it registers as the g_serial
+# gadget ("bound driver g_serial", UDC "not attached") and NEVER
+# switches to host: no hub, no ethernet, no USB-A. The kernel exposes
+# no runtime role switch either (/sys/class/usb_role/ is empty; dwc2
+# debugfs has no writable mode file). One controller, one role.
+#
+# If the USB-C serial gadget is ever needed again: set dr_mode=peripheral
+# here and re-enable the ttyGS0 getty in etc/inittab + g_serial in
+# /etc/modules. (Costs ethernet + USB-A while set.)
+dtoverlay=dwc2,dr_mode=host
 
 # Console GPU memory profile (VideoCore)
 gpu_mem=32
