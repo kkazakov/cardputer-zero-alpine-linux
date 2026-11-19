@@ -14,7 +14,7 @@ BUILDER=cpz-builder
 APK_FLAGS="--no-cache --quiet"
 PKGS="openrc busybox-openrc eudev eudev-openrc eudev-libs kbd dropbear
 wpa_supplicant iw ifupdown-ng doas i2c-tools alsa-utils alsa-lib usbutils
-tzdata openssl ca-certificates mkinitfs terminus-font"
+tzdata openssl ca-certificates mkinitfs terminus-font bluez bluez-openrc"
 
 # --- builder container must exist (owns the /work volume) ---
 if ! docker exec "$BUILDER" true >/dev/null 2>&1; then

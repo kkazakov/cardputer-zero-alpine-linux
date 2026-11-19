@@ -129,6 +129,7 @@ svc_add wpa_supplicant boot
 svc_add dropbear default
 svc_add crond default
 svc_add local default
+svc_add bluetooth default
 svc_add killprocs shutdown
 svc_add mount-ro shutdown
 svc_add savecache shutdown

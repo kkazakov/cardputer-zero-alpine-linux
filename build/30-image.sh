@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.12.2
+VER=0.13.0
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -254,6 +254,20 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q "ssid=" /mnt/rootfs/etc/wpa_supplicant/wpa_supplicant.conf \
         && echo "OK: wifi credentials baked in" \
         || echo "FAIL: no network block in wpa conf"
+    # v0.13: audio + bluetooth, field-verified on hardware
+    [ -s /mnt/rootfs/var/lib/alsa/asound.state ] \
+        && grep -q ES8389 /mnt/rootfs/var/lib/alsa/asound.state \
+        && echo "OK: ES8389 mixer state shipped" \
+        || echo "FAIL: no ES8389 asound.state"
+    [ -x /mnt/rootfs/etc/local.d/cpz-audio.start ] \
+        && echo "OK: mixer restore runs at boot" \
+        || echo "FAIL: cpz-audio.start missing or not executable"
+    [ -x /mnt/rootfs/usr/bin/bluetoothctl ] \
+        && echo "OK: bluez (bluetoothctl) installed" \
+        || echo "FAIL: bluetoothctl missing"
+    [ -L /mnt/rootfs/etc/runlevels/default/bluetooth ] \
+        && echo "OK: bluetooth service in default runlevel" \
+        || echo "FAIL: bluetooth service not enabled"
     # v0.11: persistence layer
     [ -d /mnt/rootfs/cfg ] \
         && echo "OK: /cfg mountpoint exists" \

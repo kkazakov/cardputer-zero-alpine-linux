@@ -1,0 +1,423 @@
+state.ES8389Audio {
+	control.1 {
+		iface MIXER
+		name 'ADCL Capture Volume'
+		value 191
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 255'
+			dbmin -9550
+			dbmax 3200
+			dbvalue.0 0
+		}
+	}
+	control.2 {
+		iface MIXER
+		name 'ADCR Capture Volume'
+		value 191
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 255'
+			dbmin -9550
+			dbmax 3200
+			dbvalue.0 0
+		}
+	}
+	control.3 {
+		iface MIXER
+		name 'ADCL PGA Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 14'
+			dbmin 0
+			dbmax 4200
+			dbvalue.0 0
+		}
+	}
+	control.4 {
+		iface MIXER
+		name 'ADCR PGA Volume'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 14'
+			dbmin 0
+			dbmax 4200
+			dbvalue.0 0
+		}
+	}
+	control.5 {
+		iface MIXER
+		name 'PGAL Select'
+		value DifferentialL
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 DifferentialL
+			item.1 'Line 1P'
+			item.2 'Line 2P'
+		}
+	}
+	control.6 {
+		iface MIXER
+		name 'PGAR Select'
+		value DifferentialR
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 DifferentialR
+			item.1 'Line 2N'
+			item.2 'Line 1N'
+		}
+	}
+	control.7 {
+		iface MIXER
+		name 'ALC Capture Switch'
+		value 'ALC OFF'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 'ALC OFF'
+			item.1 'ADCR ALC ON'
+			item.2 'ADCL ALC ON'
+			item.3 'ADCL & ADCL ALC ON'
+		}
+	}
+	control.8 {
+		iface MIXER
+		name 'ALC Capture Target Level'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 15'
+			dbmin -3200
+			dbmax -200
+			dbvalue.0 -3200
+		}
+	}
+	control.9 {
+		iface MIXER
+		name 'ALC Capture Max Gain'
+		value 0
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 15'
+			dbmin -3200
+			dbmax -200
+			dbvalue.0 -3200
+		}
+	}
+	control.10 {
+		iface MIXER
+		name 'ADC Ramp Rate'
+		value '0.125db/1  LRCK'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 '0.125db/1  LRCK'
+			item.1 '0.125db/4  LRCK'
+			item.2 '0.125db/8  LRCK'
+			item.3 '0.125db/16  LRCK'
+			item.4 '0.125db/32  LRCK'
+			item.5 '0.125db/64  LRCK'
+			item.6 '0.125db/128  LRCK'
+			item.7 '0.125db/256  LRCK'
+			item.8 '0.125db/512  LRCK'
+			item.9 '0.125db/1024  LRCK'
+			item.10 '0.125db/2048  LRCK'
+			item.11 '0.125db/4096  LRCK'
+			item.12 '0.125db/8192  LRCK'
+			item.13 '0.125db/16384  LRCK'
+			item.14 '0.125db/32768  LRCK'
+			item.15 '0.125db/65536  LRCK'
+		}
+	}
+	control.11 {
+		iface MIXER
+		name 'ALC Capture Winsize'
+		value '2 LRCK'
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 '2 LRCK'
+			item.1 '4  LRCK'
+			item.2 '8  LRCK'
+			item.3 '16  LRCK'
+			item.4 '32  LRCK'
+			item.5 '64  LRCK'
+			item.6 '128  LRCK'
+			item.7 '256  LRCK'
+			item.8 '512  LRCK'
+			item.9 '1024  LRCK'
+			item.10 '2048  LRCK'
+			item.11 '4096  LRCK'
+			item.12 '8192  LRCK'
+			item.13 '16384  LRCK'
+			item.14 '32768  LRCK'
+			item.15 '65536  LRCK'
+		}
+	}
+	control.12 {
+		iface MIXER
+		name 'ADC OSR Volume ON Switch'
+		value.0 true
+		value.1 true
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 2
+		}
+	}
+	control.13 {
+		iface MIXER
+		name 'ADC OSR Volume'
+		value 191
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 255'
+			dbmin -9550
+			dbmax 3200
+			dbvalue.0 0
+		}
+	}
+	control.14 {
+		iface MIXER
+		name 'ADC OUTPUT Invert Switch'
+		value.0 false
+		value.1 false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 2
+		}
+	}
+	control.15 {
+		iface MIXER
+		name 'DACL Playback Volume'
+		value 220
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 255'
+			dbmin -9550
+			dbmax 3200
+			dbvalue.0 1450
+		}
+	}
+	control.16 {
+		iface MIXER
+		name 'DACR Playback Volume'
+		value 220
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 255'
+			dbmin -9550
+			dbmax 3200
+			dbvalue.0 1450
+		}
+	}
+	control.17 {
+		iface MIXER
+		name 'DAC OUTPUT Invert Switch'
+		value.0 false
+		value.1 false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 2
+		}
+	}
+	control.18 {
+		iface MIXER
+		name 'ADC2DAC Mixer Volume'
+		value 62
+		comment {
+			access 'read write'
+			type INTEGER
+			count 1
+			range '0 - 127'
+			dbmin -9500
+			dbmax 3200
+			dbvalue.0 -3300
+		}
+	}
+	control.19 {
+		iface MIXER
+		name 'IF DACL Mixer DACR DACL Mixer'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.20 {
+		iface MIXER
+		name 'IF DACR Mixer DACL DACR Mixer'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.21 {
+		iface MIXER
+		name 'IF ADCDACL Mixer ADCL DACL Mixer'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.22 {
+		iface MIXER
+		name 'IF ADCDACR Mixer ADCR DACR Mixer'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.23 {
+		iface MIXER
+		name 'ADC Mixer DACL ADCL Mixer'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.24 {
+		iface MIXER
+		name 'ADC Mixer DACR ADCR Mixer'
+		value false
+		comment {
+			access 'read write'
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.25 {
+		iface MIXER
+		name 'ADC MUX'
+		value AMIC
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 AMIC
+			item.1 DMIC
+		}
+	}
+	control.26 {
+		iface MIXER
+		name 'OUTL MUX'
+		value Normal
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Normal
+			item.1 'DAC2 channel to DAC1 channel'
+		}
+	}
+	control.27 {
+		iface MIXER
+		name 'OUTR MUX'
+		value Normal
+		comment {
+			access 'read write'
+			type ENUMERATED
+			count 1
+			item.0 Normal
+			item.1 'DAC1 channel to DAC2 channel'
+		}
+	}
+}
+state.vc4hdmi {
+	control.1 {
+		iface CARD
+		name 'HDMI Jack'
+		value false
+		comment {
+			access read
+			type BOOLEAN
+			count 1
+		}
+	}
+	control.2 {
+		iface PCM
+		name 'Playback Channel Map'
+		value.0 0
+		value.1 0
+		value.2 0
+		value.3 0
+		value.4 0
+		value.5 0
+		value.6 0
+		value.7 0
+		comment {
+			access 'read volatile'
+			type INTEGER
+			count 8
+			range '0 - 36'
+		}
+	}
+	control.3 {
+		iface PCM
+		name 'IEC958 Playback Mask'
+		value ffffffffffffffffffffffffffffffffffffffffffffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+		comment {
+			access read
+			type IEC958
+			count 1
+		}
+	}
+	control.4 {
+		iface PCM
+		name 'IEC958 Playback Default'
+		value '0400000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+		comment {
+			access 'read write'
+			type IEC958
+			count 1
+		}
+	}
+	control.5 {
+		iface PCM
+		name ELD
+		value '0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+		comment {
+			access 'read volatile'
+			type BYTES
+			count 128
+		}
+	}
+}

@@ -1,0 +1,19 @@
+#!/bin/sh
+# /etc/local.d/cpz-audio.start — CPZ-Alpine
+#
+# Restore the ES8389 mixer state at boot. The state file was captured
+# on hardware after field-verified playback (speaker-test heard on the
+# device, DACL/DACR at 86%): rootfs-overlay/var/lib/alsa/asound.state.
+#
+# We do not add the alsa-utils-openrc service for this — one
+# deterministic script is easier to audit than a package-layout
+# dependency, and alsactl is already shipped by alsa-utils.
+
+STATE=/var/lib/alsa/asound.state
+
+[ -s "$STATE" ] || { echo "cpz-audio: no $STATE, skipping" >&2; exit 0; }
+
+alsactl restore -f "$STATE" ||
+    echo "cpz-audio: alsactl restore failed" >&2
+
+exit 0
