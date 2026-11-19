@@ -1,16 +1,14 @@
 # /etc/network/interfaces — CPZ-Alpine
-# Wired Ethernet (USB-attached chip, driver per Stage 01 harvest):
-# DHCP on cold boot; udhcpc backgrounds instead of blocking the boot when
-# no cable is plugged (-b).
+#
+# v0.14: NetworkManager owns all device configuration (the launcher's
+# Wi-Fi settings drive nmcli; NM also brings up wired eth0 with DHCP).
+# This file intentionally contains only the loopback; putting wlan0/eth0
+# here would risk a second manager fighting NM for the same interfaces.
+#
+# Wi-Fi credentials live as NM keyfile profiles:
+#   /etc/NetworkManager/system-connections/*.nmconnection
+# baked at build time from build/wifi-secret, restored from /cfg by
+# cpz-restore, or joined through the launcher's Settings → Wi-Fi UI.
 
 auto lo
 iface lo inet loopback
-
-auto eth0
-iface eth0 inet dhcp
-    udhcpc_opts -b -t 10 -T 3
-
-# Wi-Fi: add credentials to /etc/wpa_supplicant/wpa_supplicant.conf,
-# then uncomment to join at boot:
-#auto wlan0
-#iface wlan0 inet dhcp

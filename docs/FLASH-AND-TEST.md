@@ -104,6 +104,22 @@ unused for now (fine for testing; we'll auto-grow later).
 
 ## Wi-Fi on the device (post-flash)
 
+### On-demand graphical apps (NOT baked — apk add when wanted)
+
+Persistence carries anything you install across reflashes automatically
+(hourly snapshot; run `cpz-save` right after installing to be safe).
+Recommended light picks for the HDMI session:
+
+```sh
+apk add imv        # Wayland-native image viewer, a few MB
+apk add lf         # terminal file manager, zero GUI cost
+apk add epiphany   # the browser — Wayland-native, but WebKit:
+                   # ~100-200 MiB with a page open on this 512 MB board,
+                   # fine for light pages
+```
+All appear in the Super+d launcher. (In-session split panes: Tilix,
+Ctrl+Shift+O/E — no extra apps needed.)
+
 ```sh
 vi /etc/wpa_supplicant/wpa_supplicant.conf    # add your network block
 vi /etc/network/interfaces                   # uncomment wlan0 stanza

@@ -3,10 +3,12 @@
 # partition (/cfg). Runs hourly from cron and can be run any time
 # before pulling the card for a reflash.
 #
-# Saved: /root, /home/cpz, dropbear keys, wpa_supplicant config,
-# hostname/hosts, everything in /etc/local.d and /etc/conf.d, the apk
-# world file, plus the installed-package list (/cfg/pkglist.txt —
-# re-installed automatically at the next boot after a reflash).
+# Saved: /root, /home/cpz, dropbear keys, NetworkManager profiles,
+# wpa_supplicant config (legacy), hostname/hosts, everything in
+# /etc/local.d and /etc/conf.d, the launcher's state
+# (/var/lib/applaunch), the apk world file, plus the installed-package
+# list (/cfg/pkglist.txt — re-installed automatically at the next boot
+# after a reflash).
 
 CFG=/cfg
 
@@ -24,6 +26,8 @@ tar -czpf $T -C / \
     root home/cpz \
     etc/dropbear etc/wpa_supplicant etc/hostname etc/hosts \
     etc/local.d etc/conf.d etc/apk/world \
+    etc/NetworkManager/system-connections \
+    var/lib/applaunch \
     2>/dev/null || { rm -f $T; echo "cpz-save: tar failed" >&2; exit 1; }
 mv $T $CFG/save.tar.gz
 

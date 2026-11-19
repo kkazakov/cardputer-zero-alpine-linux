@@ -16,7 +16,7 @@ PKGS="openrc busybox-openrc eudev eudev-openrc eudev-libs kbd dropbear
 wpa_supplicant iw ifupdown-ng doas i2c-tools alsa-utils alsa-lib usbutils
 tzdata openssl ca-certificates mkinitfs terminus-font bluez bluez-openrc
 sway foot seatd seatd-openrc mesa-dri-gallium xkeyboard-config
-waybar bemenu dbus dbus-openrc"
+waybar bemenu dbus dbus-openrc tilix"
 
 # --- builder container must exist (owns the /work volume) ---
 if ! docker exec "$BUILDER" true >/dev/null 2>&1; then

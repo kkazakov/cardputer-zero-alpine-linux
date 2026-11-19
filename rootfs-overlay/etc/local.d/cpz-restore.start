@@ -9,14 +9,16 @@
 # Conflict policy (important — old archives must not resurrect stale
 # build files into new images):
 #   pass A, archive WINS: user-owned config (/root, /home/cpz, dropbear
-#     keys, wpa conf, hostname/hosts) — the user's data is authoritative
+#     keys, NM connection profiles, wpa conf, hostname/hosts, launcher
+#     settings) — the user's data is authoritative
 #   pass B, image WINS: /etc/local.d, /etc/conf.d, /etc/apk — restored
 #     only where the new image does not ship its own file (-k), so new
 #     build versions are never overwritten, but user-added scripts and
 #     the apk world list still come back.
 #
-# Ordering: runs before cpz-wifi.start (alphabetical), so restored wifi
-# config is in place before the bring-up script restarts wpa_supplicant.
+# NetworkManager profiles (/etc/NetworkManager/system-connections)
+# carry Wi-Fi credentials joined through the launcher's Settings UI;
+# restoring them user-is-king keeps networks across reflashes.
 
 CFG=/cfg
 A=$CFG/save.tar.gz
@@ -35,7 +37,11 @@ tar -tzf "$A" >/dev/null 2>&1 ||
 # pass A — user-is-king
 tar -xzpkf "$A" -C / \
     root home/cpz etc/dropbear etc/wpa_supplicant etc/hostname etc/hosts \
+    etc/NetworkManager/system-connections var/lib/applaunch \
     2>/dev/null
+
+# restored NM profiles are root-only (they contain PSKs)
+chmod -R go-rwx /etc/NetworkManager/system-connections 2>/dev/null
 
 # pass B — additive (never overwrite a file the new image ships)
 tar -xzpkf "$A" -k -C / \
@@ -45,5 +51,9 @@ tar -xzpkf "$A" -k -C / \
 # dropbear host keys / authorized_keys may have just changed — restart
 # it so the running daemon matches the restored files
 rc-service dropbear restart >/dev/null 2>&1
+
+# same for NetworkManager: re-read restored connection profiles
+rc-service networkmanager reload >/dev/null 2>&1 ||
+    rc-service networkmanager restart >/dev/null 2>&1
 
 exit 0
