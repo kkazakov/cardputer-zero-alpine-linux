@@ -16,7 +16,16 @@
 set -eu
 
 DEV=${1:?usage: sudo ./flash-cpz.sh /dev/sdX [image.img.gz]}
-IMG=${2:-cpz-alpine-0.11.0.img.gz}
+# v0.12.2: default to the NEWEST image in the current directory.
+# Earlier versions hardcoded a name — running the script without an
+# argument silently flashed that (old) version.
+if [ -n "${2:-}" ]; then
+    IMG=$2
+else
+    IMG=$(ls -t cpz-alpine-*.img.gz 2>/dev/null | head -1)
+fi
+[ -n "$IMG" ] || { echo "ERROR: no cpz-alpine-*.img.gz found here"; exit 1; }
+echo "flashing: $IMG"
 
 [ -b "$DEV" ] || { echo "ERROR: $DEV is not a block device"; exit 1; }
 [ "$(id -u)" = 0 ] || { echo "ERROR: run with sudo"; exit 1; }
