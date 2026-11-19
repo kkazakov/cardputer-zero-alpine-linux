@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.14.1
+VER=0.15.0
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -276,6 +276,22 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -x /mnt/rootfs/usr/bin/foot ] \
         && echo "OK: foot terminal installed" \
         || echo "FAIL: foot missing"
+    # v0.15: the light desktop — bar + launcher + session dbus
+    [ -x /mnt/rootfs/usr/bin/waybar ] \
+        && echo "OK: waybar (status bar) installed" \
+        || echo "FAIL: waybar missing"
+    [ -x /mnt/rootfs/usr/bin/bemenu-run ] \
+        && echo "OK: bemenu (app launcher) installed" \
+        || echo "FAIL: bemenu missing"
+    grep -q "dbus-run-session sway" /mnt/rootfs/usr/local/bin/cpz-desktop \
+        && echo "OK: session wrapped in dbus-run-session (GTK apps live)" \
+        || echo "FAIL: no session dbus — waybar dies on autolaunch"
+    grep -q "exec waybar" /mnt/rootfs/etc/cpz/sway.config \
+        && echo "OK: bar autostarts in session" \
+        || echo "FAIL: waybar not in session config"
+    grep -q "bemenu-run" /mnt/rootfs/etc/cpz/sway.config \
+        && echo "OK: launcher bound in session config" \
+        || echo "FAIL: no launcher binding"
     [ -x /mnt/rootfs/usr/local/bin/cpz-desktop ] \
         && echo "OK: cpz-desktop launcher present" \
         || echo "FAIL: cpz-desktop missing"

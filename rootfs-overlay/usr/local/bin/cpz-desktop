@@ -35,7 +35,10 @@ start_session() {
     # The session: sway talks to the seatd socket directly (Alpine's
     # seatd package ships no seatd-launch; wlroots' seatd backend needs
     # only the running daemon + membership of the socket group).
-    su - cpz -c "XDG_RUNTIME_DIR=/run/user/1000 sway -c /etc/cpz/sway.config" \
+    # dbus-run-session provides the session bus GTK apps (waybar) need
+    # — without it they attempt X11 autolaunch and die — and tears it
+    # down with the session.
+    su - cpz -c "XDG_RUNTIME_DIR=/run/user/1000 dbus-run-session sway -c /etc/cpz/sway.config" \
         >/dev/null 2>&1 &
 
     # give it a moment, then report
