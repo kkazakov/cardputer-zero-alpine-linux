@@ -1,0 +1,17 @@
+# /etc/udev/rules.d/99-cpz-device-groups.rules — CPZ-Alpine
+#
+# v0.18.0: the launcher runs as cpz. These are the device nodes it reads
+# or writes directly (all hardware access that does NOT go through sudo):
+#
+#   i2c-*    battery gauge (BQ27220), RTC (RX8130), backlight/expander
+#            (m5ioe1) — the launcher's battery + brightness + RTC pages
+#            talk to the chips over /dev/i2c-1.
+#   rtc*     hardware clock read/write (hwclock / the Date & Time page).
+#   sound*   ALSA mixer (volume keys + Speaker page) on the ES8389 card.
+#
+# Groups are created and cpz is added to them by build/rootfs-configure.sh.
+KERNEL=="i2c-[0-9]*", GROUP="i2c", MODE="0660"
+KERNEL=="rtc[0-9]*", GROUP="i2c", MODE="0660"
+SUBSYSTEM=="sound", GROUP="audio", MODE="0660"
+KERNEL=="controlC[0-9]*", GROUP="audio", MODE="0660"
+KERNEL=="pcmC[0-9]*D[0-9]*[cp]", GROUP="audio", MODE="0660"

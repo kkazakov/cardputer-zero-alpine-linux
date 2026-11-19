@@ -37,26 +37,33 @@ unused for now (fine for testing; we'll auto-grow later).
    initramfs — that's the accepted R2 fallback: "UI appears seconds
    later, still usable").
 2. Then the **APPLaunch launcher UI** takes over the internal LCD
-   (v0.17: the panel belongs to the launcher, OpenRC `applaunch`
-   service; the kernel console lives on HDMI/serial, `fbcon=map:0` —
-   exactly the stock M5 image's split). You get the status bar (clock,
-   battery, Wi-Fi state) over the app carousel. No login prompt on
-   the panel; the console login is root/**alpine** on HDMI (tty1) or
-   serial0 when debugging.
-3. Wi-Fi joins automatically when an NM profile is baked (built from
+   (v0.18: the launcher runs as user **cpz** with passwordless sudo and
+   the video/input/audio/i2c/seat groups). You get the Alpine wallpaper,
+   the status bar (clock, battery, Wi-Fi state) and the app carousel.
+3. **HDMI stays dark** — no splash, no kernel console, no getty on the
+   VTs (v0.18). HDMI only comes up when the desktop is started, from the
+   **HDMI** app or `cpz-desktop start`. The local rescue console is
+   serial0 (115200); SSH is the normal remote path.
+4. Wi-Fi joins automatically when an NM profile is baked (built from
    `build/wifi-secret`) — otherwise join from Settings → Wi-Fi.
 
 ## Test checklist (in order)
 
 - [ ] **T1 — launcher on LCD**: the APPLaunch carousel appears on the
-      internal screen within ~15 s of power-on. Cards cycle ←/→
-      (or Z/X); Enter opens, ESC backs out / long-press returns home.
-      The status bar shows the clock and a battery percentage.
-      If the panel is dark: check `rc-service applaunch status` over
-      SSH — `/var/log/applaunch.log` carries the launcher's stderr.
-- [ ] **T1b — console split**: with HDMI plugged, tty1 shows the login
-      (`root`/**alpine**); the LCD never flickers when the console
-      redraws (kernel console is on HDMI, not on the launcher's fb).
+      internal screen within ~15 s of power-on, over the Alpine
+      wallpaper. Cards cycle ←/→ (or Z/X); Enter opens, ESC backs out /
+      long-press returns home. The status bar shows the clock and a
+      battery percentage. If the panel is dark: check
+      `rc-service applaunch status` over SSH — `/var/log/applaunch.log`
+      carries the launcher's stderr.
+- [ ] **T1b — dark HDMI**: with a monitor plugged, the screen shows
+      **no console text** during boot or idle: `/proc/cmdline` has only
+      `console=serial0` and `/etc/inittab` only a ttyS0 getty.
+- [ ] **T1c — HDMI app** [TEST]: open the **HDMI** card → the switch
+      reflects the live session; ENTER flips it On → sway + waybar
+      appear on the monitor; Off → the session stops. Reboot with it On
+      and the session starts by itself (`/var/lib/applaunch/hdmi-desktop`
+      holds "1"); turn it Off before the next reboot to keep HDMI dark.
 - [ ] **T2 — keyboard (through the launcher)** [TEST]: ←/→ (Z/X) cycle the
       carousel; Enter opens the focused card; ESC backs out, long-press
       ESC returns home from anywhere. The SYM layer: open the **CLI**

@@ -1,0 +1,12 @@
+# /etc/sudoers.d/cpz — CPZ-Alpine
+#
+# v0.18.0: the APPLaunch launcher runs as the unprivileged `cpz` user (it
+# is a single-user pocket device; running the whole UI as root was only a
+# phase-1 shortcut). cpz gets full passwordless sudo so the few genuinely
+# privileged operations — RTC write, mount/power actions, the on-demand
+# desktop's seatd/runtime-dir setup — work exactly like upstream's
+# polkit/sudo flow, without prompts.
+#
+# Install mode is forced to 0440 by build/rootfs-configure.sh; sudo
+# refuses to load group/world-writable files.
+cpz ALL=(ALL) NOPASSWD: ALL

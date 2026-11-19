@@ -1,38 +1,50 @@
 #!/bin/sh
 # /usr/local/bin/cpz-desktop — CPZ-Alpine on-demand HDMI session
 #
-# docs/05 contract: at boot NOTHING graphical runs. This command is
-# the only way a session starts (plus an opt-in udev hotplug hook).
+# docs/05 contract: at boot NOTHING graphical runs and HDMI stays dark.
+# This command is the only way a session starts (the launcher's HDMI app
+# calls it, and an opt-in udev hotplug hook may too).
 #
-#   cpz-desktop start   seatd up -> sway+foot on HDMI (as user cpz),
+#   cpz-desktop start   seatd up -> sway+waybar on HDMI (as user cpz),
 #                       HDMI audio becomes the default ALSA card
 #   cpz-desktop stop    sway down, seatd down, ALSA default back to the
 #                       internal es8389 — prints free -m before/after
 #   cpz-desktop status
 #
-# v0.17.2 field fixes (all three bit the first hardware session):
+# v0.18.0: works for BOTH root (boot hook) and cpz (the launcher runs as
+# cpz now). The few root-only steps go through passwordless sudo when
+# invoked unprivileged; the sway session itself always runs as cpz.
+#
+# Earlier field fixes kept here (do not regress):
 #   1. seatd must be READY (socket present) before sway starts. OpenRC
-#      returns from `rc-service seatd start` before the socket exists,
-#      and libseat then falls through to its logind backend and dies:
-#        [libseat] Could not get primary session ... / No backend was
-#        able to open a seat / Failed to start a DRM session
-#      So: wait for /run/seatd.sock (bounded), and force
-#      LIBSEAT_BACKEND=seatd so the logind probe is never tried.
-#   2. A zombie seatd from an earlier run (started inside the launcher's
-#      CLI terminal, which is a subreaper, so nothing reaps it) leaves a
-#      stale /run/seatd.pid; start-stop-daemon then refuses to start with
-#      "/usr/bin/seatd is already running". Detect the zombie via
+#      returns before /run/seatd.sock exists and libseat then falls
+#      through to its logind backend and dies ("No backend was able to
+#      open a seat"). We wait for the socket and force
+#      LIBSEAT_BACKEND=seatd.
+#   2. a stale /run/seatd.pid from a zombie seatd blocks starts
+#      ("/usr/bin/seatd is already running"); detect the zombie via
 #      /proc/<pid>/stat and clear the pidfile.
-#   3. sway.config/hdmi-mode shipped 0600 root-only -> the cpz session
-#      could not read its own config. The build now normalizes to 0644
-#      (rootfs-configure.sh); this script keeps working either way.
+#   3. sway.config shipped 0600 root-only -> the cpz session could not
+#      read its own config. Build normalizes 0644 (rootfs-configure).
+#   4. setsid detaches the session from the calling terminal's process
+#      group (started from the launcher CLI/HDMI app, a plain `&` left
+#      children behind when that shell exited).
 
 CMD=${1:-status}
+ME_UID=$(id -u)
 
 ram_used() { free -m | awk "/^Mem:/ {print \$3}"; }
 
+# run a privileged helper as root, via sudo when we are not root
+as_root() {
+    if [ "$ME_UID" = 0 ]; then
+        "$@"
+    else
+        sudo -n "$@"
+    fi
+}
+
 seatd_pid_alive_or_zombie() {
-    # prints "alive", "zombie" or nothing
     pid=$(cat /run/seatd.pid 2>/dev/null) || return 0
     [ -n "$pid" ] || return 0
     [ -d "/proc/$pid" ] || return 0
@@ -47,19 +59,18 @@ ensure_seatd() {
     if [ -S /run/seatd.sock ]; then
         return 0
     fi
-    # stale state from a crashed/zombie earlier run
     case "$(seatd_pid_alive_or_zombie)" in
         zombie)
             echo "cpz-desktop: clearing zombie seatd pidfile (/run/seatd.pid)"
-            rm -f /run/seatd.pid
+            as_root rm -f /run/seatd.pid
             ;;
         alive)
-            : # a live daemon without a socket: restart it
+            : # live daemon without a socket: restart it
             ;;
     esac
-    rc-service seatd stop >/dev/null 2>&1 || rc-service seatd zap >/dev/null 2>&1
-    rc-service seatd start >/dev/null 2>&1
-    # wait for the socket, not for the init script
+    as_root rc-service seatd stop >/dev/null 2>&1
+    as_root rc-service seatd zap >/dev/null 2>&1
+    as_root rc-service seatd start >/dev/null 2>&1
     i=0
     while [ ! -S /run/seatd.sock ] && [ $i -lt 40 ]; do
         sleep 0.25
@@ -75,38 +86,33 @@ start_session() {
     fi
     BEFORE=$(ram_used)
 
-    # seat manager (oneshot; never in a boot runlevel by design)
     if ! ensure_seatd; then
         echo "cpz-desktop: seatd socket did not appear — cannot start a session"
-        cat /run/seatd.pid 2>/dev/null | while read -r pid; do
-            [ -d "/proc/$pid" ] && echo "             seatd pid $pid state: $(awk '{print $3}' /proc/$pid/stat)"
-        done
+        pid=$(cat /run/seatd.pid 2>/dev/null)
+        [ -n "$pid" ] && [ -d "/proc/$pid" ] &&
+            echo "             seatd pid $pid state: $(awk '{print $3}' /proc/$pid/stat)"
         exit 1
     fi
 
     # Wayland runtime dir for the unprivileged session user
-    mkdir -p /run/user/1000
-    chown cpz:cpz /run/user/1000
-    chmod 700 /run/user/1000
+    as_root mkdir -p /run/user/1000
+    as_root chown cpz:cpz /run/user/1000
+    as_root chmod 700 /run/user/1000
 
     # HDMI audio becomes the default card while the session is up
-    ln -sf /usr/share/alsa/alsa.conf.d/20-vc4hdmi.conf /etc/asound.conf 2>/dev/null
+    as_root ln -sf /usr/share/alsa/alsa.conf.d/20-vc4hdmi.conf /etc/asound.conf 2>/dev/null
 
-    # The session: sway talks to the seatd socket directly (Alpine's
-    # seatd package ships no seatd-launch; wlroots' seatd backend needs
-    # only the running daemon + membership of the socket group).
-    # dbus-run-session provides the session bus GTK apps (waybar) need
-    # — without it they attempt X11 autolaunch and die — and tears it
-    # down with the session.
-    #
-    # setsid detaches from the calling terminal's process group: started
-    # from the launcher's CLI terminal (a PTY child), a plain `&` leaves
-    # sway/seatd children behind when that shell exits.
-    LIBSEAT_BACKEND=seatd setsid su - cpz -c \
-        "LIBSEAT_BACKEND=seatd XDG_RUNTIME_DIR=/run/user/1000 dbus-run-session sway -c /etc/cpz/sway.config" \
-        >/dev/null 2>&1 </dev/null &
+    # The session. As root we enter cpz's account; as cpz we run directly
+    # (a `su - cpz` from cpz would prompt for a password).
+    if [ "$ME_UID" = 0 ]; then
+        LIBSEAT_BACKEND=seatd setsid su - cpz -c \
+            "LIBSEAT_BACKEND=seatd XDG_RUNTIME_DIR=/run/user/1000 dbus-run-session sway -c /etc/cpz/sway.config" \
+            >/dev/null 2>&1 </dev/null &
+    else
+        LIBSEAT_BACKEND=seatd setsid dbus-run-session sway -c /etc/cpz/sway.config \
+            >/dev/null 2>&1 </dev/null &
+    fi
 
-    # give it a moment, then report
     i=0
     while [ $i -lt 16 ]; do
         sleep 0.5
@@ -129,8 +135,9 @@ stop_session() {
     pkill -x sway 2>/dev/null
     pkill -x waybar 2>/dev/null
     sleep 1
-    rc-service seatd stop >/dev/null 2>&1 || rc-service seatd zap >/dev/null 2>&1
-    rm -f /etc/asound.conf
+    as_root rc-service seatd stop >/dev/null 2>&1
+    as_root rc-service seatd zap >/dev/null 2>&1
+    as_root rm -f /etc/asound.conf
     echo "cpz-desktop: stopped. RAM: ${BEFORE} MiB -> $(ram_used) MiB used"
     echo "             (design gate: within +10 MiB of pre-session)"
 }

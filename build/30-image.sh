@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.17.2
+VER=0.18.0
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -451,6 +451,60 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -d /mnt/rootfs/var/lib/applaunch ] \
         && echo "OK: /var/lib/applaunch state dir present" \
         || echo "FAIL: /var/lib/applaunch missing"
+    # v0.18.0: the launcher runs as cpz with passwordless sudo + hardware
+    # groups; the HDMI desktop stays dark until started.
+    [ -x /mnt/rootfs/usr/bin/sudo ] \
+        && echo "OK: sudo installed (cpz escalation)" \
+        || echo "FAIL: sudo missing"
+    [ -f /mnt/rootfs/etc/sudoers.d/cpz ] \
+        && [ "$(stat -c %a /mnt/rootfs/etc/sudoers.d/cpz)" = "440" ] \
+        && echo "OK: /etc/sudoers.d/cpz present (0440, NOPASSWD)" \
+        || echo "FAIL: cpz sudoers file missing or wrong mode"
+    grep -q 'command_user="cpz:cpz"' /mnt/rootfs/etc/init.d/applaunch \
+        && echo "OK: applaunch runs as user cpz" \
+        || echo "FAIL: applaunch still runs as root"
+    # The builder cannot resolve image usernames (no cpz in its passwd),
+    # so compare the numeric uid from the image's own passwd entry.
+    CPZ_UID=$(awk -F: '$1 == "cpz" { print $3 }' /mnt/rootfs/etc/passwd)
+    [ -n "$CPZ_UID" ] && [ "$(stat -c %u /mnt/rootfs/var/lib/applaunch)" = "$CPZ_UID" ] \
+        && echo "OK: /var/lib/applaunch owned by cpz" \
+        || echo "FAIL: /var/lib/applaunch not writable by cpz"
+    for g in video input audio i2c seat; do
+        grep -q "^$g:.*\bcpz\b" /mnt/rootfs/etc/group \
+            && echo "OK: cpz in group $g" \
+            || echo "FAIL: cpz missing from group $g"
+    done
+    [ -s /mnt/rootfs/etc/udev/rules.d/99-cpz-device-groups.rules ] \
+        && echo "OK: i2c/rtc/audio udev group rules present" \
+        || echo "FAIL: device group udev rules missing"
+    # HDMI stays dark: no VT getty, no tty1 kernel console, no splash
+    if grep -qE "^tty(1|2)::respawn" /mnt/rootfs/etc/inittab; then
+        echo "FAIL: a VT getty is enabled — it would paint HDMI at boot"
+    else
+        echo "OK: no VT getty (HDMI stays dark until the desktop starts)"
+    fi
+    grep -q "console=tty1" /mnt/boot/cmdline.txt \
+        && echo "FAIL: kernel console still mapped to tty1 (HDMI output)" \
+        || echo "OK: kernel console serial-only (no HDMI boot text)"
+    grep -q "disable_splash=1" /mnt/boot/config.txt \
+        && echo "OK: firmware splash disabled" \
+        || echo "FAIL: firmware splash still enabled"
+    [ -x /mnt/rootfs/etc/local.d/cpz-hdmi-boot.start ] \
+        && echo "OK: HDMI desktop preference re-applied at boot" \
+        || echo "FAIL: cpz-hdmi-boot.start missing"
+    grep -q "as_root" /mnt/rootfs/usr/local/bin/cpz-desktop \
+        && echo "OK: cpz-desktop works for cpz (sudo escalation)" \
+        || echo "FAIL: cpz-desktop only works as root"
+    # launcher assets: Alpine wallpaper + HDMI app icon + the page wired in
+    [ -s /mnt/rootfs/usr/share/APPLaunch/share/images/alpine_wallpaper.png ] \
+        && echo "OK: Alpine wallpaper shipped" \
+        || echo "FAIL: alpine_wallpaper.png missing"
+    [ -s /mnt/rootfs/usr/share/APPLaunch/share/images/hdmi_100.png ] \
+        && echo "OK: HDMI app icon shipped" \
+        || echo "FAIL: hdmi_100.png missing"
+    grep -aq "hdmi-desktop" /mnt/rootfs/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch \
+        && echo "OK: launcher carries the HDMI desktop app" \
+        || echo "FAIL: HDMI app not compiled into the launcher"
     # v0.11: persistence layer
     [ -d /mnt/rootfs/cfg ] \
         && echo "OK: /cfg mountpoint exists" \

@@ -34,7 +34,7 @@ sway foot seatd seatd-openrc mesa-dri-gallium xkeyboard-config
 waybar bemenu dbus dbus-openrc tilix swaybg
 freetype libinput libxkbcommon dbus-libs glib curl libstdc++ bash
 networkmanager networkmanager-openrc networkmanager-wifi networkmanager-cli
-wpa_supplicant"
+wpa_supplicant sudo"
 
 # --- builder container must exist (owns the /work volume, runs 30-image) ---
 if ! docker exec "$BUILDER" true >/dev/null 2>&1; then

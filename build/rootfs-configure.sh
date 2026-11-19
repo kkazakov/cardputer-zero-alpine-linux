@@ -160,9 +160,26 @@ echo "root:alpine" | chpasswd
 adduser -D -s /bin/ash cpz 2>/dev/null || true
 echo "cpz:alpine" | chpasswd
 addgroup cpz wheel 2>/dev/null || true
-# v0.14: HDMI desktop session access (docs/05): DRM, evdev, and the
-# seatd socket group (seat may not exist until seatd-openrc lands)
-for g in video input seat; do addgroup cpz "$g" 2>/dev/null || true; done
+# v0.18.0: the launcher runs as cpz (not root) and must reach the hardware
+# it talks to directly:
+#   video — /dev/fb1 (the LCD launcher surface)
+#   input — /dev/input/by-path/... (tca8418 keypad, its evdev runtime keymap)
+#   audio — /dev/snd/* (ALSA mixer for the volume keys + Speaker page)
+#   i2c   — /dev/i2c-1 (BQ27220 gauge, RX8130 RTC, m5ioe1 backlight)
+#   seat  — seatd socket group for the on-demand HDMI session
+addgroup -S i2c 2>/dev/null || true   # package-created groups first, ours after
+for g in video input audio i2c seat; do addgroup cpz "$g" 2>/dev/null || true; done
+
+# v0.18.0: cpz gets full passwordless sudo — the single-user device's
+# replacement for upstream's polkit/sudo approval flow (RTC write, power
+# actions, cpz-desktop's seatd/runtime-dir steps). sudo refuses
+# group/world-writable files, so force 0440 root:root.
+chown root:root /etc/sudoers.d/cpz 2>/dev/null || true
+chmod 0440 /etc/sudoers.d/cpz 2>/dev/null || true
+
+# v0.18.0: the launcher (as cpz) writes its config.json and the
+# hdmi-desktop preference here.
+chown -R cpz:cpz /var/lib/applaunch 2>/dev/null || true
 
 echo "== script syntax checks =="
 for f in /etc/local.d/console.start /etc/profile.d/cpz-status.sh; do

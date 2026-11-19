@@ -66,3 +66,8 @@ dtoverlay=bq27220
 dtoverlay=gpio-ir,gpio_pin=13,gpio_pull=up
 dtoverlay=pwm-ir-tx,gpio_pin=12,func=4
 dtoverlay=spk-gpio24-high-overlay
+
+# v0.18.0: HDMI must stay dark until the on-demand desktop starts
+# (cpz-desktop / the HDMI app). No firmware rainbow splash, no warnings.
+disable_splash=1
+avoid_warnings=1

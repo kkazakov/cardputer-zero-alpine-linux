@@ -1,0 +1,20 @@
+#!/bin/sh
+# /etc/local.d/cpz-hdmi-boot.start — CPZ-Alpine
+#
+# v0.18.0: re-apply the user's on-demand HDMI desktop choice at boot.
+# The launcher's HDMI app persists the choice in
+# /var/lib/applaunch/hdmi-desktop ("1" = start the session at boot,
+# anything else = keep HDMI dark). The file is written by the launcher
+# (running as cpz); this script runs as root from OpenRC's `local`
+# service, after dbus/networkmanager are up.
+#
+# A session started here is the same one `cpz-desktop start` starts;
+# stopping it from the launcher writes "0" and kills sway, so the next
+# boot stays dark.
+
+STATE=/var/lib/applaunch/hdmi-desktop
+
+[ "$(cat "$STATE" 2>/dev/null)" = "1" ] || exit 0
+
+/usr/local/bin/cpz-desktop start >/dev/null 2>&1 &
+exit 0
