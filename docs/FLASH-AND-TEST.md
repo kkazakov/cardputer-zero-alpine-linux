@@ -140,8 +140,10 @@ apk add epiphany   # the browser — Wayland-native, but WebKit:
                    # ~100-200 MiB with a page open on this 512 MB board,
                    # fine for light pages
 ```
-All appear in the Super+d launcher. (In-session split panes: Tilix,
-Ctrl+Shift+O/E — no extra apps needed.)
+All appear in the Super+d launcher. The default session terminal is
+**foot** (Super+Enter); Tilix is installed but never auto-starts —
+open it from the launcher when you want pane splits
+(Ctrl+Shift+O/E).
 
 ```sh
 vi /etc/wpa_supplicant/wpa_supplicant.conf    # add your network block
