@@ -1,0 +1,3 @@
+# CPZ-Alpine HDMI hotplug (docs/05 §2)
+ACTION=="change", SUBSYSTEM=="drm", DEVPATH=="*/card0-HDMI-A-1", \
+  RUN+="/usr/sbin/cpz-hdmi-event"

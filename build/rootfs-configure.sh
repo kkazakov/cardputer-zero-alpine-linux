@@ -139,6 +139,9 @@ echo "root:alpine" | chpasswd
 adduser -D -s /bin/ash cpz 2>/dev/null || true
 echo "cpz:alpine" | chpasswd
 addgroup cpz wheel 2>/dev/null || true
+# v0.14: HDMI desktop session access (docs/05): DRM, evdev, and the
+# seatd socket group (seat may not exist until seatd-openrc lands)
+for g in video input seat; do addgroup cpz "$g" 2>/dev/null || true; done
 
 echo "== script syntax checks =="
 for f in /etc/local.d/console.start /etc/profile.d/cpz-status.sh; do

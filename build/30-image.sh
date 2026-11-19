@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.13.0
+VER=0.14.0
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -268,6 +268,32 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -L /mnt/rootfs/etc/runlevels/default/bluetooth ] \
         && echo "OK: bluetooth service in default runlevel" \
         || echo "FAIL: bluetooth service not enabled"
+    # v0.14: on-demand HDMI desktop (docs/05, Gate G3 — field-verified:
+    # sway+foot up in ~5s, ~57 MiB resident, clean stop)
+    [ -x /mnt/rootfs/usr/bin/sway ] \
+        && echo "OK: sway installed" \
+        || echo "FAIL: sway missing"
+    [ -x /mnt/rootfs/usr/bin/foot ] \
+        && echo "OK: foot terminal installed" \
+        || echo "FAIL: foot missing"
+    [ -x /mnt/rootfs/usr/local/bin/cpz-desktop ] \
+        && echo "OK: cpz-desktop launcher present" \
+        || echo "FAIL: cpz-desktop missing"
+    [ -s /mnt/rootfs/etc/cpz/sway.config ] \
+        && echo "OK: session config present" \
+        || echo "FAIL: no sway.config"
+    [ -s /mnt/rootfs/etc/cpz/hdmi-mode ] \
+        && echo "OK: hotplug consent mode file present" \
+        || echo "FAIL: no /etc/cpz/hdmi-mode"
+    [ -s /mnt/rootfs/etc/udev/rules.d/99-cpz-hdmi.rules ] \
+        && echo "OK: HDMI hotplug udev rule present" \
+        || echo "FAIL: no udev hotplug rule"
+    # the on-demand contract: NOTHING graphical in any runlevel
+    if ls /mnt/rootfs/etc/runlevels/*/seatd >/dev/null 2>&1; then
+        echo "FAIL: seatd is in a boot runlevel — violates the on-demand contract"
+    else
+        echo "OK: seatd not in any runlevel (on-demand contract holds)"
+    fi
     # v0.11: persistence layer
     [ -d /mnt/rootfs/cfg ] \
         && echo "OK: /cfg mountpoint exists" \

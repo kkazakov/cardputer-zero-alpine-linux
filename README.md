@@ -19,7 +19,8 @@ partition that survives reflashes.
 | USB-C serial console | ⚠️ retired | dwc2 is host-only for ethernet + USB-A (otg dead-end logged in config.txt); Wi-Fi/Ethernet SSH is the remote path |
 | SSH (dropbear) | ✅ | over Wi-Fi |
 | Persistence across reflashes | ✅ | `CPZDATA` partition + hourly snapshots + boot restore |
-| Bluetooth, HDMI desktop, audio | ⏳ | Phase B |
+| HDMI desktop (on demand) | ✅ v0.14.0 | `cpz-desktop start` → sway+foot on HDMI in ~5 s, ~57 MiB resident; nothing graphical at boot; hotplug consent via udev (`ask` mode) |
+| Bluetooth, camera func, IR func | ⏳ | controller verified; capture + remote tests pending |
 
 ## Build
 

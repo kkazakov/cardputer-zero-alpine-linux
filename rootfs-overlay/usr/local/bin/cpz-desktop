@@ -1,0 +1,75 @@
+#!/bin/sh
+# /usr/local/bin/cpz-desktop — CPZ-Alpine on-demand HDMI session
+#
+# docs/05 contract: at boot NOTHING graphical runs. This command is
+# the only way a session starts (plus an opt-in udev hotplug hook).
+#
+#   cpz-desktop start   seatd up -> sway+foot on HDMI (as user cpz),
+#                       HDMI audio becomes the default ALSA card
+#   cpz-desktop stop    sway down, seatd down, ALSA default back to the
+#                       internal es8389 — prints free -m before/after
+#   cpz-desktop status
+
+CMD=${1:-status}
+
+ram_used() { free -m | awk "/^Mem:/ {print \$3}"; }
+
+start_session() {
+    if pgrep -x sway >/dev/null 2>&1; then
+        echo "cpz-desktop: session already running"
+        exit 0
+    fi
+    BEFORE=$(ram_used)
+
+    # seat manager (oneshot; never in a boot runlevel by design)
+    rc-service seatd status >/dev/null 2>&1 || rc-service seatd start
+
+    # Wayland runtime dir for the unprivileged session user
+    mkdir -p /run/user/1000
+    chown cpz:cpz /run/user/1000
+    chmod 700 /run/user/1000
+
+    # HDMI audio becomes the default card while the session is up
+    ln -sf /usr/share/alsa/alsa.conf.d/20-vc4hdmi.conf /etc/asound.conf 2>/dev/null
+
+    # The session: sway talks to the seatd socket directly (Alpine's
+    # seatd package ships no seatd-launch; wlroots' seatd backend needs
+    # only the running daemon + membership of the socket group).
+    su - cpz -c "XDG_RUNTIME_DIR=/run/user/1000 sway -c /etc/cpz/sway.config" \
+        >/dev/null 2>&1 &
+
+    # give it a moment, then report
+    sleep 4
+    if pgrep -x sway >/dev/null 2>&1; then
+        echo "cpz-desktop: session up (sway as $(pgrep -x sway | head -1))"
+        echo "RAM: ${BEFORE} MiB -> $(ram_used) MiB used"
+    else
+        echo "cpz-desktop: sway did NOT start — check: hdmi plugged? seatd running?"
+        echo "             run with stderr visible:"
+        echo "             su - cpz -c \"XDG_RUNTIME_DIR=/run/user/1000 sway\""
+        exit 1
+    fi
+}
+
+stop_session() {
+    BEFORE=$(ram_used)
+    pkill -x sway 2>/dev/null
+    sleep 1
+    rc-service seatd stop >/dev/null 2>&1
+    rm -f /etc/asound.conf
+    echo "cpz-desktop: stopped. RAM: ${BEFORE} MiB -> $(ram_used) MiB used"
+    echo "             (design gate: within +10 MiB of pre-session)"
+}
+
+case "$CMD" in
+    start) start_session ;;
+    stop)  stop_session ;;
+    status)
+        if pgrep -x sway >/dev/null 2>&1; then
+            echo "running (sway pid $(pgrep -x sway | head -1))"
+        else
+            echo "stopped"
+        fi
+        ;;
+    *) echo "usage: cpz-desktop start|stop|status"; exit 1 ;;
+esac

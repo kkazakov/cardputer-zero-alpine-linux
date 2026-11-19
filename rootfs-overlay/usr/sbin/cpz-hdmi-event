@@ -1,0 +1,36 @@
+#!/bin/sh
+# /usr/sbin/cpz-hdmi-event — udev hotplug hook for the HDMI connector
+#
+# Fired by /etc/udev/rules.d/99-cpz-hdmi.rules on connector state
+# changes. Must return instantly (udev RUN+ context) — it only decides
+# and spawns. Behaviour is governed by /etc/cpz/hdmi-mode:
+#   off  — never react (also: react to nothing while a session runs)
+#   ask  — print a notice on the LCD console; the user starts the session
+#   auto — start cpz-desktop in the background, unattended
+#
+# Default shipped mode: ask (docs/05: user consent each time).
+
+MODE=$(cat /etc/cpz/hdmi-mode 2>/dev/null)
+SESSION_PID=$(pgrep -x sway 2>/dev/null)
+
+case "$MODE" in
+    off)
+        exit 0
+        ;;
+    auto)
+        # if a session is already up, a hotplug event is not a command
+        [ -n "$SESSION_PID" ] && exit 0
+        /usr/local/bin/cpz-desktop start >/dev/null 2>&1 &
+        ;;
+    ask|*)
+        # consent mode: a one-line notice on the home console; session
+        # stays down until the user runs cpz-desktop themselves
+        [ -n "$SESSION_PID" ] && exit 0
+        (
+        sleep 2
+        printf '\r\nHDMI detected — run: cpz-desktop start\r' > /dev/tty1
+        ) &
+        ;;
+esac
+
+exit 0
