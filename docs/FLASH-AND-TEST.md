@@ -80,9 +80,27 @@ unused for now (fine for testing; we'll auto-grow later).
       while held; double-press behavior (locked mode) is the driver FSM's.
 - [ ] **T9 — audio**: `speaker-test -c2 -twav` (ES8389 speaker path) and
       `alsamixer` (F6 to pick the es8389 card).
-- [ ] **T10 — HDMI**: plug into a monitor — the desktop *does not* start
-      (this build has no compositor at all). But check `dmesg | grep vc4`
-      shows the HDMI connector detected.
+- [ ] **T10 — HDMI desktop (on demand)**: plug into a monitor. Nothing
+      starts by itself (hotplug prints an "ask" notice on the LCD).
+      Run `cpz-desktop start`: sway + waybar + foot come up in ~5 s,
+      ~90 MiB resident; Super+Enter terminal, Super+d launcher,
+      Super+Shift+e exits. `cpz-desktop stop` reclaims the RAM. The
+      internal LCD console is untouched throughout (fbtft is not a
+      KMS output). Internal keyboard types — v0.14.1 assigns it to
+      seat0 (M5's stock rule exiles it to a private seat).
+- [ ] **T11 — camera (field-verified method)**: with v4l-utils on the
+      device (kept across reflashes by the persistence pkglist):
+      ```sh
+      v4l2-ctl -d /dev/video0 --set-fmt-video=width=3280,height=2464,pixelformat=pRAA
+      v4l2-ctl -d /dev/video0 --stream-mmap=4 --stream-count=1 --stream-to=/tmp/frame.raw
+      ```
+      Pull `/tmp/frame.raw` off the device and convert host-side:
+      `python3 build/tools/debayer-srggb10.py frame.raw camera-test.jpg`.
+      Healthy output: 10-bit stats using the full 0–1023 range.
+- [ ] **T12 — Bluetooth**: `rc-service bluetooth status` shows the
+      daemon running with `hci0` up (BCM4343A2 firmware loads at
+      boot). Pairing: make a device discoverable, then
+      `bluetoothctl scan on` + `bluetoothctl pair <mac>`.
 
 ## Wi-Fi on the device (post-flash)
 
