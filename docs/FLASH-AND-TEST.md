@@ -55,7 +55,11 @@ unused for now (fine for testing; we'll auto-grow later).
       long-press returns home. The status bar shows the clock and a
       battery percentage. If the panel is dark: check
       `rc-service applaunch status` over SSH — `/var/log/applaunch.log`
-      carries the launcher's stderr.
+      carries the launcher's stderr. A `crashed` status with an **empty**
+      log means the service never exec'd: start-stop-daemon drops to
+      `cpz` before opening the log file, so `/var/log/applaunch.log` must
+      be cpz-writable (`ls -la /var/log/applaunch.log` → `cpz cpz`, 0664;
+      the init script enforces this in `start_pre` since v0.18.1).
 - [ ] **T1b — dark HDMI**: with a monitor plugged, the screen shows
       **no console text** during boot or idle: `/proc/cmdline` has only
       `console=serial0` and `/etc/inittab` only a ttyS0 getty.

@@ -43,6 +43,12 @@ tar -xzpkf "$A" -C / \
 # restored NM profiles are root-only (they contain PSKs)
 chmod -R go-rwx /etc/NetworkManager/system-connections 2>/dev/null
 
+# v0.18.1: the launcher (and its HDMI app) runs as cpz and writes
+# config.json / hdmi-desktop here. The archive above is created by root,
+# so the extracted files come back root-owned and the app could no longer
+# persist its state (silent Off after a reflash). Restore cpz ownership.
+chown -R cpz:cpz /var/lib/applaunch 2>/dev/null
+
 # pass B — additive (never overwrite a file the new image ships)
 tar -xzpkf "$A" -k -C / \
     etc/local.d etc/conf.d etc/apk/world \

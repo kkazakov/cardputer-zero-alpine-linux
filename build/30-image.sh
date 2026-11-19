@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.18.0
+VER=0.18.1
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -463,6 +463,11 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'command_user="cpz:cpz"' /mnt/rootfs/etc/init.d/applaunch \
         && echo "OK: applaunch runs as user cpz" \
         || echo "FAIL: applaunch still runs as root"
+    # v0.18.1: start-stop-daemon drops to cpz before opening the log, so
+    # the log must be cpz-writable or the service dies without exec.
+    grep -q 'chown cpz:cpz /var/log/applaunch.log' /mnt/rootfs/etc/init.d/applaunch \
+        && echo "OK: applaunch log writable by cpz (service can open it)" \
+        || echo "FAIL: applaunch log still root-only — service dies before exec"
     # The builder cannot resolve image usernames (no cpz in its passwd),
     # so compare the numeric uid from the image's own passwd entry.
     CPZ_UID=$(awk -F: '$1 == "cpz" { print $3 }' /mnt/rootfs/etc/passwd)
@@ -492,13 +497,28 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -x /mnt/rootfs/etc/local.d/cpz-hdmi-boot.start ] \
         && echo "OK: HDMI desktop preference re-applied at boot" \
         || echo "FAIL: cpz-hdmi-boot.start missing"
+    grep -q "chown -R cpz:cpz /var/lib/applaunch" /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && echo "OK: restored launcher state re-owned to cpz" \
+        || echo "FAIL: restore leaves cpz state root-owned"
     grep -q "as_root" /mnt/rootfs/usr/local/bin/cpz-desktop \
         && echo "OK: cpz-desktop works for cpz (sudo escalation)" \
         || echo "FAIL: cpz-desktop only works as root"
-    # launcher assets: Alpine wallpaper + HDMI app icon + the page wired in
-    [ -s /mnt/rootfs/usr/share/APPLaunch/share/images/alpine_wallpaper.png ] \
-        && echo "OK: Alpine wallpaper shipped" \
-        || echo "FAIL: alpine_wallpaper.png missing"
+    # launcher assets: Alpine lock-screen wallpaper + HDMI app icon + page
+    # v0.18.1: the Alpine artwork replaced the stock lockscreen.png
+    # (320x150, drawn under the lock clock); the home screen keeps its
+    # stock background. Compare against the repo asset so a stale image
+    # asset fails the build.
+    LOCK_REPO=/repo/launcher/projects/APPLaunch/APPLaunch/share/images/lockscreen.png
+    if [ -s /mnt/rootfs/usr/share/APPLaunch/share/images/lockscreen.png ] &&
+       [ "$(stat -c %s /mnt/rootfs/usr/share/APPLaunch/share/images/lockscreen.png)" = \
+         "$(stat -c %s "$LOCK_REPO" 2>/dev/null)" ]; then
+        echo "OK: Alpine lock-screen wallpaper shipped"
+    else
+        echo "FAIL: lockscreen.png is not the Alpine artwork"
+    fi
+    [ -e /mnt/rootfs/usr/share/APPLaunch/share/images/alpine_wallpaper.png ] \
+        && echo "FAIL: home wallpaper asset should not ship (belongs on the lock screen)" \
+        || echo "OK: home screen has no custom wallpaper"
     [ -s /mnt/rootfs/usr/share/APPLaunch/share/images/hdmi_100.png ] \
         && echo "OK: HDMI app icon shipped" \
         || echo "FAIL: hdmi_100.png missing"
