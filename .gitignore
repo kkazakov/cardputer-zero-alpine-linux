@@ -30,3 +30,6 @@ vendor/**/images/
 .vscode/
 # local working clone (user reference checkout — vendor it deliberately if wanted)
 launcher/
+
+# release staging (the ZIP itself is under images/, already ignored)
+build/release-stage/

@@ -31,6 +31,15 @@ echo "flashing: $IMG"
 [ "$(id -u)" = 0 ] || { echo "ERROR: run with sudo"; exit 1; }
 [ -f "$IMG" ] || { echo "ERROR: image $IMG not found"; exit 1; }
 
+# v0.20.1 release: verify the adjacent checksum before touching the card.
+if [ -f "$IMG.sha256" ] && command -v sha256sum >/dev/null 2>&1; then
+    IMG_DIR=$(dirname "$IMG")
+    IMG_BASE=$(basename "$IMG")
+    echo "== verifying checksum =="
+    ( cd "$IMG_DIR" && sha256sum -c "$IMG_BASE.sha256" ) \
+        || { echo "ERROR: checksum mismatch — refusing to flash"; exit 1; }
+fi
+
 # unmount every mounted partition of the target
 MOUNTED=$(awk -v d="$DEV" '$1 ~ "^"d {print $1}' /proc/mounts)
 if [ -n "$MOUNTED" ]; then

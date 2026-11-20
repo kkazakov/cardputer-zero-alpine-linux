@@ -36,6 +36,6 @@ sh "$REPO_HOST/build/20-rootfs.sh"
 echo "=== Stage 30: image assembly ==="
 docker run --rm --privileged -v cpz-work:/work -v "$REPO_HOST:/repo" \
     alpine:3.20 sh -c \
-    'apk add --no-cache util-linux dosfstools mtools e2fsprogs gzip file >/dev/null && sh /repo/build/30-image.sh'
+    'apk add --no-cache util-linux dosfstools mtools e2fsprogs gzip file zip unzip >/dev/null && sh /repo/build/30-image.sh'
 
 echo "=== DONE — see images/ and build/verification-report.txt ==="

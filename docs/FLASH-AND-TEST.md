@@ -19,10 +19,22 @@ fixes MIPI-CSI camera startup and opens Files in `/home/cpz`. Items marked
 
 ## Flashing
 
+The public download is the release ZIP:
+<https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.20.1>.
+It contains the image, checksum, README and Linux/Windows/macOS flashers.
+
 ```sh
 sha256sum -c cpz-alpine-0.20.1.img.gz.sha256     # verify download
 # /dev/sdX = the LAB microSD card (NOT the stock card, NOT a disk!)
 lsblk                                          # triple-check sizes
+sudo ./flash-cpz.sh /dev/sdX                   # preserves /cfg on reflashes
+```
+
+`flash-cpz.sh` verifies the checksum, unmounts the card, writes the image
+and recreates/formats the CPZDATA partition. The raw `dd` command below is
+a first-install fallback only: it does **not** create or preserve `/cfg`.
+
+```sh
 gunzip -c cpz-alpine-0.20.1.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 ```

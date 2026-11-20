@@ -13,6 +13,10 @@ MIPI-CSI camera startup and opens Files in `/home/cpz`. Their content
 lives under `/home/cpz`, so reflashes preserve it. The device test
 checklist is in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
+**First public release:** [CPZ-Alpine v0.20.1](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.20.1).
+Download the ZIP (image + SHA-256 + Linux/Windows/macOS flashers + README),
+not the loose image.
+
 | Subsystem | State | Notes |
 |---|---|---|
 | **Launcher UI (APPLaunch)** | ✅ v0.20.1 | upstream M5 carousel on the 320×170 LCD, built as a musl aarch64 binary (`build/25-launcher.sh`), OpenRC `applaunch` service running as user `cpz` |

@@ -140,6 +140,55 @@ Also ship `docs/FLASH-AND-TEST.md` when it changed. The `cpz-xfer`
 container (with `/tmp/k`) is the fallback route if the sandbox key is
 missing. Never copy keys, credentials or `build/wifi-secret/`.
 
+## GitHub releases — when the user requests a new release
+
+The canonical release page is
+<https://github.com/kkazakov/cardputer-zero-alpine-linux/releases>
+(GitHub's **Releases** area; there is no `releases/` directory in git).
+A release is a **tag plus uploaded ZIP assets**, not a commit of binaries.
+
+Only release after the image verification is clean and the version commit
+is pushed. Then:
+
+1. Write `docs/RELEASE-NOTES-vX.Y.Z.md` with three explicit sections:
+   **What's new**, **Known issues**, **Untested / needs a hardware pass**.
+   Do not claim untested hardware works.
+2. Package:
+   ```sh
+   sh build/release.sh X.Y.Z
+   ```
+   This creates `images/cpz-alpine-X.Y.Z.zip` and `.zip.sha256`. The ZIP
+   has one top-level folder, `cpz-alpine-X.Y.Z/`, containing:
+   - `cpz-alpine-X.Y.Z.img.gz` + `.img.gz.sha256`
+   - `flash-cpz.sh` (Linux, preserves `/cfg`)
+   - `flash-cpz.bat` + `flash-cpz.ps1` (Windows)
+   - `flash-cpz.command` (macOS)
+   - `README.txt` and `RELEASE-NOTES.txt`
+3. Commit and push the release notes/scripts change first. The release tag
+   must point at the pushed `main` commit that contains them.
+4. Copy the ZIP, ZIP checksum, release notes and runbook to the desktop,
+   then create the GitHub release from the desktop (it holds the `gh`
+   auth; the sandbox does not):
+   ```sh
+   scp images/cpz-alpine-X.Y.Z.zip images/cpz-alpine-X.Y.Z.zip.sha256 \
+       docs/RELEASE-NOTES-vX.Y.Z.md docs/FLASH-AND-TEST.md \
+       wasp@192.168.88.158:Downloads/cpz/
+   ssh wasp@192.168.88.158 'cd ~/Downloads/cpz &&
+     gh release create vX.Y.Z --repo kkazakov/cardputer-zero-alpine-linux \
+       --target main --title "CPZ-Alpine vX.Y.Z" \
+       --notes-file RELEASE-NOTES-vX.Y.Z.md \
+       cpz-alpine-X.Y.Z.zip cpz-alpine-X.Y.Z.zip.sha256'
+   ```
+   `gh release create` creates the `vX.Y.Z` tag at remote `main`.
+   Verify with `gh release view vX.Y.Z --repo ...`.
+5. Never replace an already-published asset in place. If the release is
+   wrong, bump the patch version, rebuild, and publish a new tag. Do not
+   commit `images/*.zip` or the release staging directory.
+
+The ZIP is the user-facing download; the raw image alone is not a
+complete release. The latest ZIP should also replace the loose image in
+`~/Downloads/cpz/` as the artifact kept there.
+
 ---
 
 # State (v0.20.1)
@@ -369,7 +418,9 @@ The upstream store is gone from the fork, but the apps are relevant:
 
 | Path | Contents |
 |---|---|
-| `build/` | Pipeline: `20-rootfs.sh`, `25-launcher.sh`, `26-apps.sh`, `30-image.sh`, `flash-cpz.sh`, `push-remote.sh`, `INPUTS.md` |
+| `build/` | Pipeline: `20-rootfs.sh`, `25-launcher.sh`, `26-apps.sh`, `30-image.sh`, `flash-cpz.sh`, `release.sh`, `push-remote.sh`, `INPUTS.md` |
+| `build/release-assets/` | Windows/macOS flashers packaged into each GitHub release ZIP |
+| `docs/RELEASE-README.txt`, `docs/RELEASE-NOTES-v*.md` | release ZIP readme + GitHub release description |
 | `build/boot-config/` | `cmdline.txt` (serial-only console), `config.txt` (splash off, overlays) |
 | `rootfs-overlay/etc/local.d/` | `cpz-restore.start`, `cpz-hdmi-boot.start`, `cpz-audio.start`, `cpz-wifi.start`, `cpz-leds.start`, `console.start` |
 | `rootfs-overlay/etc/udev/rules.d/` | `99-cpz-device-groups.rules` (i2c/rtc/audio/dma_heap groups) |
