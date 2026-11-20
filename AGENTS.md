@@ -5,8 +5,10 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.19.1** (base repo `main`; the launcher fork is a
-sibling checkout in `launcher/`, branch `alpine`).
+Current release: **v0.20.0** (base repo `main`; the launcher fork is a
+sibling checkout in `launcher/`, branch `alpine`). v0.20.0 adds Files
+and Camera as default launcher apps, with their content under
+`/home/cpz` persisted through `/cfg`.
 
 ---
 
@@ -139,16 +141,19 @@ missing. Never copy keys, credentials or `build/wifi-secret/`.
 
 ---
 
-# State (v0.18.3)
+# State (v0.20.0)
 
 ## What the image is
 
 - Alpine Linux 3.24 aarch64/musl, OpenRC, kernel 6.18.33+rpt-rpi-v8
   (M5 stock graft, see `build/INPUTS.md`).
 - APPLaunch launcher (fork, musl) owns the internal 320×170 ST7789 panel
-  (`/dev/fb1`); Calculator is the second app binary.
+  (`/dev/fb1`); Calculator, Files and Camera are the other app binaries.
 - **No app store, no demo games, no Python terminal.** Home carousel:
-  Settings, CLI, SSH, IP Panel, Calculator, **HDMI**.
+  Settings, CLI, SSH, IP Panel, Files, Camera, Calculator, **HDMI**.
+- Files starts in `~/Files`; Camera stills go to
+  `~/Pictures/DCIM/Camera`, clips to `~/Videos/Camera`. All of it lives
+  under `/home/cpz`, so the `/cfg` snapshot preserves it across reflashes.
 - Network: NetworkManager (`nmcli`) owns eth0/wlan0; packages
   `networkmanager networkmanager-wifi networkmanager-cli wpa_supplicant`.
 - Desktop: on-demand sway/waybar on HDMI, started only by `cpz-desktop`
@@ -353,7 +358,7 @@ The upstream store is gone from the fork, but the apps are relevant:
 
 | Path | Contents |
 |---|---|
-| `build/` | Pipeline: `20-rootfs.sh`, `25-launcher.sh`, `30-image.sh`, `flash-cpz.sh`, `push-remote.sh`, `INPUTS.md` |
+| `build/` | Pipeline: `20-rootfs.sh`, `25-launcher.sh`, `26-apps.sh`, `30-image.sh`, `flash-cpz.sh`, `push-remote.sh`, `INPUTS.md` |
 | `build/boot-config/` | `cmdline.txt` (serial-only console), `config.txt` (splash off, overlays) |
 | `rootfs-overlay/etc/local.d/` | `cpz-restore.start`, `cpz-hdmi-boot.start`, `cpz-audio.start`, `cpz-wifi.start`, `cpz-leds.start`, `console.start` |
 | `rootfs-overlay/etc/udev/rules.d/` | `99-cpz-device-groups.rules` (i2c/rtc/audio groups) |

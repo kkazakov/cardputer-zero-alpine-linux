@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Files
+Comment=CardputerZero file browser and preview
+Exec=/usr/local/bin/cpz-files
+Icon=share/images/files.png
+Terminal=false
+Sysplause=false

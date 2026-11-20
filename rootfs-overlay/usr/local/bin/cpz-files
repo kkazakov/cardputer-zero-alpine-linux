@@ -1,0 +1,18 @@
+#!/bin/sh
+# /usr/local/bin/cpz-files — start the Files browser in the user's
+# persistent document directory.
+#
+# /home/cpz is pass A of cpz-save (archive wins), so everything under
+# $HOME/Files is written into /cfg/save.tar.gz and comes back after a
+# reflash. Keep app-created documents here; a directory outside /home
+# would need its own cpz-save/cpz-restore entry.
+set -eu
+
+HOME=${HOME:-/home/cpz}
+FILES_DIR="$HOME/Files"
+
+mkdir -p "$FILES_DIR" 2>/dev/null || true
+FILES_START_DIR=${FILES_START_DIR:-$FILES_DIR}
+export FILES_START_DIR
+
+exec /usr/share/APPLaunch/bin/M5CardputerZero-Files "$@"

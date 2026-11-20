@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Camera
+Comment=CardputerZero camera and gallery
+Exec=/usr/share/APPLaunch/bin/camera_app
+Icon=share/images/camera1.png
+Terminal=false
+Sysplause=false

@@ -1,13 +1,13 @@
-# FLASH AND TEST — CPZ-Alpine 0.19.1
+# FLASH AND TEST — CPZ-Alpine 0.20.0
 
 Built offline from M5's own stock image (Phase-A kernel graft). Core
-hardware support is field-verified through v0.19.0; v0.19.1 is the Wi-Fi
-Settings authorization fix. Items marked [TEST] below still deserve one
-device pass.
+hardware support is field-verified through v0.19.0; v0.20.0 adds the
+Files browser and Camera as default launcher applications. Items marked
+[TEST] below still deserve one device pass.
 
 ## What you're flashing
 
-- `images/cpz-alpine-0.19.1.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
+- `images/cpz-alpine-0.20.0.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
   FAT32 boot (256 MiB) + ext4 root (1.5 GiB), MBR disk id `0x10c0ffee`
 - Base: Alpine Linux 3.24 aarch64, musl + BusyBox + OpenRC, **no systemd**
 - Kernel: M5 stock `6.18.33+rpt-rpi-v8` (bit-exact from the factory image,
@@ -19,10 +19,10 @@ device pass.
 ## Flashing
 
 ```sh
-sha256sum -c cpz-alpine-0.19.1.img.gz.sha256     # verify download
+sha256sum -c cpz-alpine-0.20.0.img.gz.sha256     # verify download
 # /dev/sdX = the LAB microSD card (NOT the stock card, NOT a disk!)
 lsblk                                          # triple-check sizes
-gunzip -c cpz-alpine-0.19.1.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
+gunzip -c cpz-alpine-0.20.0.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 ```
 
@@ -90,6 +90,26 @@ unused for now (fine for testing; we'll auto-grow later).
       it across a reboot. The System menu shows Storage / Licenses /
       Reboot but NO Software-updater page, and no Developer/ADB section —
       those are RPi-OS-only and hidden on Alpine.
+- [ ] **T2d — Files and Camera (v0.20.0)** [TEST]: the carousel shows
+      **Files** and **Camera** between IP Panel and Calculator, both
+      enabled by default (Settings → Launcher lists them as preinstalled).
+      Files opens in `~/Files`; create/copy/rename a file there, then
+      check `ls -l /home/cpz/Files`. Camera opens on `/dev/video0`, takes
+      a still, and the gallery shows it; the file lands in
+      `/home/cpz/Pictures/DCIM/Camera`. Both apps must return to the
+      carousel with ESC. A missing app means the Files/Camera binary did
+      not ship — see `/var/log/applaunch.log` for a rejected `.desktop`.
+- [ ] **T2e — Files/Camera persistence (v0.20.0)** [TEST]: put a marker
+      file in `~/Files`, take one photo, run `cpz-save`, then reflash the
+      same card with `build/flash-cpz.sh` (it preserves `CPZDATA`). After
+      boot, the marker and the photo are back. For a quick archive check
+      without reflashing:
+      ```sh
+      tar -tzf /cfg/save.tar.gz | grep -E 'home/cpz/(Files|Pictures/DCIM/Camera)'
+      ```
+      The whole `/home/cpz` tree is pass A (archive wins) in
+      `cpz-restore.start`, so Files content and camera media ride the
+      same snapshot as Wi-Fi, hostname and launcher settings.
 - [ ] **T3 — serial rescue**: the normal image has **no USB-C serial
       gadget** (dwc2 is host-only for Ethernet/USB-A). Use the 14-pin
       expansion UART at 115200, or SSH. If the LCD is dark and you have
@@ -154,7 +174,7 @@ unused for now (fine for testing; we'll auto-grow later).
       the HDMI preference off.
       **External keyboard:** unchanged — real Super/Alt and the US layout;
       it goes straight to sway, not the launcher.
-- [ ] **T11 — camera (field-verified method)**: with v4l-utils on the
+- [ ] **T11 — camera sensor (field-verified method)**: with v4l-utils on the
       device (kept across reflashes by the persistence pkglist):
       ```sh
       v4l2-ctl -d /dev/video0 --set-fmt-video=width=3280,height=2464,pixelformat=pRAA

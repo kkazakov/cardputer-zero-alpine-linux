@@ -1,10 +1,14 @@
 # build outputs
-images/
+/images/
 *.img
 *.img.gz
 *.img.xz
 *.tar
 build/verification-report.txt
+
+# pinned app sources cloned by build/26-apps.sh (re-downloadable; pins in
+# build/INPUTS.md and the script)
+build/apps-src/
 
 # secrets — user wifi credentials, NEVER commit (see AGENTS.md)
 build/wifi-secret/
@@ -18,6 +22,7 @@ vendor/*.img.xz
 
 # reference-only clones (upstream pinned in build/INPUTS.md)
 vendor/pi-gen/
+vendor/**/images/
 
 # editor / os noise
 .DS_Store

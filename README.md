@@ -3,19 +3,21 @@
 An extremely light, purpose-built **Alpine Linux** operating system for the
 **M5Stack CardputerZero** (Raspberry Pi CM0 / RP3A0, Broadcom BCM2837).
 
-**Status: v0.19.1.** The launcher face of the stock M5 image, on Alpine:
-the APPLaunch UI (carousel, settings, calculator, CLI terminal) owns the
-internal LCD and boots straight into it. HDMI/Sway is opt-in and stays
-dark until you start it. The v0.19.0 Sway keyboard and HDMI-lock work is
-in this image; v0.19.1 fixes Wi-Fi Settings authorization (the launcher
-now runs `nmcli` through a passwordless-sudo wrapper because Alpine's
-NetworkManager has no polkit). The device test checklist is in
-[docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
+**Status: v0.20.0.** The launcher face of the stock M5 image, on Alpine:
+the APPLaunch UI (carousel, settings, Files, Camera, calculator, CLI
+terminal) owns the internal LCD and boots straight into it. HDMI/Sway is
+opt-in and stays dark until you start it. The v0.19.0 Sway keyboard and
+HDMI-lock work is in this image; v0.20.0 adds the Files browser and
+Camera as default apps (both native musl builds), with their content
+under `/home/cpz` so reflashes preserve it. The device test checklist is
+in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
 | Subsystem | State | Notes |
 |---|---|---|
-| **Launcher UI (APPLaunch)** | ✅ v0.19.1 | upstream M5 carousel on the 320×170 LCD, built as a musl aarch64 binary (`build/25-launcher.sh`), OpenRC `applaunch` service running as user `cpz` |
+| **Launcher UI (APPLaunch)** | ✅ v0.20.0 | upstream M5 carousel on the 320×170 LCD, built as a musl aarch64 binary (`build/25-launcher.sh`), OpenRC `applaunch` service running as user `cpz` |
 | Launcher: Calculator | ✅ | `M5CardputerZero-Calculator` built from the same launcher checkout |
+| Launcher: Files | ✅ v0.20.0 | native musl build of CardputerZero/Files (`build/26-apps.sh`); starts in `~/Files`, previews text/images/audio/video (`ffmpeg` for video), enabled by default |
+| Launcher: Camera | ✅ v0.20.0 | native musl build of Camera 1.0.2, pinned to the image's libcamera 0.7.1 ABI; stills in `~/Pictures/DCIM/Camera`, clips in `~/Videos/Camera`, gallery built in |
 | Launcher: Settings | ✅ | Wi-Fi/Ethernet, Bluetooth, brightness/volume, battery + BQ calibrate, Date & Time; RPi-OS-only updater/ADB pages hidden |
 | Launcher: CLI terminal | ✅ | interactive bash over a PTY, rendered in LVGL |
 | Console | ✅ | **14-pin expansion UART** at 115200 + SSH; no VT getty and no HDMI kernel console. HDMI stays dark until the desktop starts. The USB-C serial gadget is retired (dwc2 is host-only for Ethernet/USB-A) |
@@ -25,10 +27,10 @@ NetworkManager has no polkit). The device test checklist is in
 | Wi-Fi (BCM43439) | ✅ v0.19.1 | NetworkManager owns wlan0; Settings → Wi-Fi can toggle the radio, scan, join WPA2, forget, and reconnect. `nmcli` runs through `/usr/local/bin/cpz-nmcli` (root via passwordless sudo) because there is no polkit on the image. Credentials may also be baked as an NM keyfile |
 | Ethernet (SR9900A) | ✅ v0.12.2 | mainline r8152 ID patch, dwc2 host mode; field-verified DHCP + traffic |
 | SSH (dropbear) | ✅ | over Wi-Fi or Ethernet; root password is `alpine` — change it before exposing the device |
-| Persistence across reflashes | ✅ v0.19.0 | `CPZDATA` partition, hourly `cpz-save` + boot restore. Saves `/root`, `/home/cpz`, dropbear keys, the **whole `/etc/NetworkManager` tree**, and `/var/lib/applaunch` (launcher settings + HDMI preference) |
+| Persistence across reflashes | ✅ v0.20.0 | `CPZDATA` partition, hourly `cpz-save` + boot restore. Saves `/root`, `/home/cpz` (including Files content and camera media), dropbear keys, the **whole `/etc/NetworkManager` tree**, and `/var/lib/applaunch` (launcher settings + HDMI preference) |
 | HDMI desktop (on demand) | ✅ v0.19.0 | `cpz-desktop start` → Sway + waybar + foot at 1080p60 in ~5 s, roughly 90 MiB with foot open; HDMI audio becomes default while running. Hotplug is consent-only (`/etc/cpz/hdmi-mode=ask`); a saved boot preference can still start it |
 | LCD HDMI lock | ✅ v0.19.0 | after 1 s the LCD shows **HDMI LOCKED** and the launcher stops reading the internal keypad; hold ESC 2 s to stop the desktop and unlock. The exit path is LCD-only; no monitor is needed once a session is up |
-| Bluetooth / camera / IR | ⏳ | BT controller and camera sensor path verified; no user-facing camera/IR app and no remote-test pass yet |
+| Bluetooth / IR | ⏳ | BT controller path verified; no user-facing IR app and no remote-test pass yet |
 
 ## Sway on HDMI (on demand)
 
@@ -173,8 +175,10 @@ sh build/30-image.sh      # partition, assemble, VERIFY (must end clean)
 
 `20-rootfs.sh` also runs `build/25-launcher.sh`, which rebuilds APPLaunch
 and Calculator inside the persistent `cpz-launcher-build` container and
-installs them into `/usr/share/APPLaunch`. Requires Docker with `binfmt`
-for arm64 emulation.
+installs them into `/usr/share/APPLaunch`, then `build/26-apps.sh`,
+which builds Files and Camera in `cpz-apps-build` and installs their
+binaries, desktop entries and assets. Requires Docker with `binfmt` for
+arm64 emulation.
 
 The verification pass writes `build/verification-report.txt` and must
 contain **zero** `FAIL:` lines (it ends with `verification clean`). A
@@ -189,7 +193,8 @@ sudo ./build/flash-cpz.sh /dev/sdX [image.img.gz]
 Writes the fixed 1.8 GiB image (256 MiB FAT boot + 1.5 GiB ext4 root),
 then re-creates the **CPZDATA** partition at a fixed offset and formats it
 only if missing. On the device, hourly cron and on-demand `cpz-save`
-snapshot `/root`, `/home/cpz`, dropbear keys, `/etc/wpa_supplicant`,
+snapshot `/root`, `/home/cpz` (including `~/Files`, `~/Pictures/DCIM/Camera`
+and `~/Videos/Camera`), dropbear keys, `/etc/wpa_supplicant`,
 `/etc/hostname`, `/etc/hosts`, the full NetworkManager config tree,
 `/var/lib/applaunch`, and additive `/etc/local.d`, `/etc/conf.d`, and
 `/etc/apk/world` into `/cfg`; every boot restores them

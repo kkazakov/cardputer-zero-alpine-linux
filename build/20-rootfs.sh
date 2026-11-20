@@ -4,9 +4,10 @@
 # Builds the rootfs inside a linux/arm64 alpine:3.24 Docker container
 # (emulated; requires binfmt — see build/build-image.sh prerequisites),
 # grafts the harvested Phase-A BSP via build/rootfs-configure.sh, builds
-# and installs the APPLaunch launcher via build/25-launcher.sh, then
-# exports the container filesystem to /work/rootfs.tar on the cpz-work
-# volume (daemon-side; nothing large streams through this client).
+# and installs the APPLaunch launcher via build/25-launcher.sh plus the
+# Files and Camera apps via build/26-apps.sh, then exports the container
+# filesystem to /work/rootfs.tar on the cpz-work volume (daemon-side;
+# nothing large streams through this client).
 set -eu
 
 REPO_HOST=${REPO_HOST:-/home/wasp/projects/cardputer-zero-alpine}
@@ -27,6 +28,8 @@ APK_FLAGS="--no-cache --quiet"
 # device plugin is absent). wpa_supplicant is the backend NM spawns (Alpine's
 # networkmanager does not depend on it). swaybg stops sway's background
 # helper error on the HDMI session.
+# v0.20.0: Files (video preview via ffmpeg; ALSA audio) and Camera
+# (libcamera 0.7.1 + v4l2 + fmt/cjson, JPEG/PNG/Freetype).
 PKGS="openrc busybox-openrc eudev eudev-openrc eudev-libs kbd dropbear
 iw doas i2c-tools alsa-utils alsa-lib usbutils
 tzdata openssl ca-certificates mkinitfs terminus-font bluez bluez-openrc
@@ -34,7 +37,8 @@ sway foot seatd seatd-openrc mesa-dri-gallium xkeyboard-config
 waybar bemenu dbus dbus-openrc tilix swaybg
 freetype libinput libxkbcommon dbus-libs glib curl libstdc++ bash
 networkmanager networkmanager-openrc networkmanager-wifi networkmanager-cli
-wpa_supplicant sudo"
+wpa_supplicant sudo
+ffmpeg v4l-utils-libs cjson libcamera libcamera-ipa"
 
 # --- builder container must exist (owns the /work volume, runs 30-image) ---
 if ! docker exec "$BUILDER" true >/dev/null 2>&1; then
@@ -59,6 +63,9 @@ docker exec "$CONTAINER" sh /repo/build/rootfs-configure.sh
 
 echo "== building + installing the launcher (build/25-launcher.sh) =="
 REPO_HOST="$REPO_HOST" sh "$(dirname "$0")/25-launcher.sh"
+
+echo "== building + installing Files + Camera (build/26-apps.sh) =="
+REPO_HOST="$REPO_HOST" sh "$(dirname "$0")/26-apps.sh"
 
 echo "== exporting rootfs tar to the volume =="
 docker export "$CONTAINER" | docker exec -i "$BUILDER" sh -c 'cat > /work/rootfs.tar'

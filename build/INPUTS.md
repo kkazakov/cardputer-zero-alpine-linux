@@ -1,4 +1,4 @@
-# build/INPUTS.md — pinned build inputs (v0.17.0)
+# build/INPUTS.md — pinned build inputs (v0.20.0)
 
 Everything this build consumes, with content hashes. Reproduce by
 fetching these exact artifacts; the build is deterministic against them.
@@ -26,6 +26,31 @@ fetching these exact artifacts; the build is deterministic against them.
   tca8418_keypad_m5stack_keymap.map` — generated from the same measured
   keycap legends as `cpz-sym-keymap.map` (the harvest's stock map prints
   wrong symbols on rows q..m and is deliberately overridden).
+
+## Files and Camera apps (v0.20.0)
+
+Built natively (aarch64/musl) by `build/26-apps.sh` in the persistent
+`cpz-apps-build` container; sources are cloned under `build/apps-src/`
+(gitignored) at these pins:
+
+- Files: https://github.com/CardputerZero/Files
+  commit `af673336af3aeb3281c20575d2436b93ea4353f9` (v1.0.3 tree)
+  - dependencies (from its `repos.json`): lvgl `v9.5.0`, spdlog
+    `v1.17.0`, smooth_ui_toolkit `v2.13.0`, miniaudio `0.11.25`,
+    box2d `v3.1.1`
+  - built with `FILES_USE_SDL=OFF`, `FILES_USE_PULSEAUDIO=OFF` (the
+    image has ALSA but no PulseAudio daemon); video preview shells out
+    to the image's `ffmpeg`
+- Camera: https://github.com/CardputerZero/Camera tag `v1.0.2`
+  commit `54885137f52a888d8d194fd9e1beefbd68b1a999`
+  - pinned to 1.0.2 because Camera 1.0.3+ requires libcamera >= 0.7.2
+    (1.0.4 requires 0.8.0) while Alpine 3.24 ships libcamera 0.7.1
+  - one build patch: `build/patches/camera-native-musl.patch` removes
+    `/usr/include` from its target include lists, because an explicit
+    `-isystem /usr/include` breaks Alpine musl's fortify
+    `include_next <stdlib.h>` chain
+  - runtime assets in `/usr/share/camera_app/{fonts,audio,images}` plus
+    the compatibility `/usr/share/CameraApp/assets/{fonts,audio}`
 
 ## M5 stock CardputerZero image (Phase-A BSP source)
 

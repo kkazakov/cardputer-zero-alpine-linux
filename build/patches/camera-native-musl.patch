@@ -1,0 +1,38 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ae932c2..65d9838 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -95,10 +95,18 @@ endfunction()
+ 
+ function(camera_app_add_imported_library target_name library_path include_dirs)
+     if(NOT TARGET ${target_name})
++        # Native Alpine/musl: never pass the compiler's own /usr/include as
++        # an explicit include dir (it breaks fortify include_next headers).
++        set(_cpz_filtered_includes)
++        foreach(_cpz_include_dir IN LISTS include_dirs)
++            if(NOT _cpz_include_dir MATCHES "^/+usr/include/?$")
++                list(APPEND _cpz_filtered_includes "${_cpz_include_dir}")
++            endif()
++        endforeach()
+         add_library(${target_name} UNKNOWN IMPORTED)
+         set_target_properties(${target_name} PROPERTIES
+             IMPORTED_LOCATION "${library_path}"
+-            INTERFACE_INCLUDE_DIRECTORIES "${include_dirs}"
++            INTERFACE_INCLUDE_DIRECTORIES "${_cpz_filtered_includes}"
+         )
+     endif()
+ endfunction()
+@@ -406,6 +414,13 @@ else()
+     list(REMOVE_DUPLICATES LVGL_LIBS)
+     list(REMOVE_DUPLICATES CJSON_INCLUDE_DIRS)
+ 
++    # Native Alpine/musl build: an explicit -isystem /usr/include breaks
++    # musl fortify headers (include_next <stdlib.h>). The compiler already
++    # searches /usr/include, so drop it from the target include lists.
++    foreach(_cpz_include_list APP_DEP_INCLUDE_DIRS LVGL_INCLUDE_DIRS CJSON_INCLUDE_DIRS)
++        list(FILTER ${_cpz_include_list} EXCLUDE REGEX "^/+usr/include/?$")
++    endforeach()
++
+     target_compile_definitions(lvgl PUBLIC USE_DESKTOP=0 APP_USE_DRM=$<BOOL:${APP_USE_DRM}>)
+     target_include_directories(lvgl PUBLIC ${LVGL_INCLUDE_DIRS} ${APP_DEP_INCLUDE_DIRS})
+     target_link_libraries(lvgl PUBLIC ${LVGL_LIBS} ${APP_DEP_LIBS})

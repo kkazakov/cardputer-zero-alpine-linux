@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.19.1
+VER=0.20.0
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -558,6 +558,69 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -aq "hdmi-desktop" /mnt/rootfs/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch \
         && echo "OK: launcher carries the HDMI desktop app" \
         || echo "FAIL: HDMI app not compiled into the launcher"
+    # v0.20.0: Files and Camera are default launcher apps. Both are built
+    # natively (aarch64/musl) by build/26-apps.sh; Camera is pinned to the
+    # 1.0.2 ABI because Alpine 3.24 ships libcamera 0.7.1.
+    for app in M5CardputerZero-Files camera_app; do
+        bin="/mnt/rootfs/usr/share/APPLaunch/bin/$app"
+        [ -x "$bin" ] \
+            && echo "OK: $app binary present" \
+            || echo "FAIL: $app binary missing"
+        file "$bin" | grep -q 'ARM aarch64' \
+            && file "$bin" | grep -q 'interpreter /lib/ld-musl-aarch64' \
+            && echo "OK: $app is a musl aarch64 binary" \
+            || echo "FAIL: $app is not a musl aarch64 binary"
+    done
+    [ -x /mnt/rootfs/usr/local/bin/cpz-files ] \
+        && grep -q 'FILES_START_DIR' /mnt/rootfs/usr/local/bin/cpz-files \
+        && echo "OK: Files wrapper starts in the persisted ~/Files tree" \
+        || echo "FAIL: cpz-files wrapper missing or does not set FILES_START_DIR"
+    for f in files.desktop camera_app.desktop; do
+        [ -s "/mnt/rootfs/usr/share/APPLaunch/applications/$f" ] \
+            && echo "OK: $f launcher entry present" \
+            || echo "FAIL: $f launcher entry missing"
+    done
+    grep -q '^Name=Files' /mnt/rootfs/usr/share/APPLaunch/applications/files.desktop \
+        && grep -q '^Exec=/usr/local/bin/cpz-files' \
+            /mnt/rootfs/usr/share/APPLaunch/applications/files.desktop \
+        && echo "OK: Files entry points at cpz-files" \
+        || echo "FAIL: Files .desktop entry wrong"
+    grep -q '^Name=Camera' /mnt/rootfs/usr/share/APPLaunch/applications/camera_app.desktop \
+        && grep -q '^Exec=/usr/share/APPLaunch/bin/camera_app' \
+            /mnt/rootfs/usr/share/APPLaunch/applications/camera_app.desktop \
+        && echo "OK: Camera entry points at the installed binary" \
+        || echo "FAIL: Camera .desktop entry wrong"
+    [ -s /mnt/rootfs/usr/share/APPLaunch/share/images/files.png ] \
+        && [ -s /mnt/rootfs/usr/share/APPLaunch/share/images/camera1.png ] \
+        && echo "OK: Files/Camera icons present" \
+        || echo "FAIL: Files/Camera icons missing"
+    grep -q '^files.desktop' /mnt/rootfs/usr/share/APPLaunch/preinstalled-desktop-apps.tsv \
+        && grep -q '^camera_app.desktop' /mnt/rootfs/usr/share/APPLaunch/preinstalled-desktop-apps.tsv \
+        && echo "OK: Files/Camera are preinstalled (enabled by default)" \
+        || echo "FAIL: Files/Camera missing from the preinstalled manifest"
+    [ -s /mnt/rootfs/usr/share/camera_app/fonts/camera_icons.ttf ] \
+        && [ -s /mnt/rootfs/usr/share/camera_app/audio/shutter.wav ] \
+        && echo "OK: Camera runtime fonts/audio installed" \
+        || echo "FAIL: Camera asset tree incomplete"
+    [ -x /mnt/rootfs/usr/bin/ffmpeg ] \
+        && echo "OK: ffmpeg installed (Files video preview)" \
+        || echo "FAIL: ffmpeg missing — Files video preview dead"
+    for lib in 'libcamera.so.*' 'libv4l2.so.*' 'libcjson.so.*' 'libfmt.so.*'; do
+        ls /mnt/rootfs/usr/lib/$lib >/dev/null 2>&1 \
+            && echo "OK: runtime $lib" \
+            || echo "FAIL: runtime $lib missing (Camera link)"
+    done
+    # Files/Camera content lives under /home/cpz; cpz-save must keep that
+    # tree in the /cfg snapshot and cpz-restore must merge it back.
+    [ -d /mnt/rootfs/home/cpz/Files ] \
+        && [ -d /mnt/rootfs/home/cpz/Pictures/DCIM/Camera ] \
+        && [ -d /mnt/rootfs/home/cpz/Videos/Camera ] \
+        && echo "OK: Files/Camera content directories exist" \
+        || echo "FAIL: Files/Camera content directories missing"
+    grep -q 'home/cpz' /mnt/rootfs/usr/local/bin/cpz-save \
+        && grep -q 'home/cpz' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && echo "OK: Files/Camera home tree is saved to /cfg and restored" \
+        || echo "FAIL: home/cpz missing from persistence save/restore"
     # v0.11: persistence layer
     [ -d /mnt/rootfs/cfg ] \
         && echo "OK: /cfg mountpoint exists" \

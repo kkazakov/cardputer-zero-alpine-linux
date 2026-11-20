@@ -209,6 +209,17 @@ chmod 0440 /etc/sudoers.d/cpz 2>/dev/null || true
 # hdmi-desktop preference here.
 chown -R cpz:cpz /var/lib/applaunch 2>/dev/null || true
 
+# v0.20.0: Files and Camera write user content under /home/cpz — the
+# Files browser starts in ~/Files, Camera saves stills to
+# ~/Pictures/DCIM/Camera and clips to ~/Videos/Camera. cpz-save archives
+# the whole home tree into /cfg/save.tar.gz, so these survive a reflash;
+# create them up front so the first app launch does not race a missing
+# parent directory.
+for d in /home/cpz/Files /home/cpz/Pictures/DCIM/Camera /home/cpz/Videos/Camera; do
+    mkdir -p "$d"
+    chown cpz:cpz "$d"
+done
+
 echo "== script syntax checks =="
 for f in /etc/local.d/console.start /etc/profile.d/cpz-status.sh; do
     sh -n "$f" && echo "OK: $f"
