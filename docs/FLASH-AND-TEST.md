@@ -1,4 +1,4 @@
-# FLASH AND TEST — CPZ-Alpine 0.17.0
+# FLASH AND TEST — CPZ-Alpine 0.19.0
 
 Built offline from M5's own stock image (Phase-A kernel graft). Versions
 through v0.16 are **hardware-verified** per the README table; items marked
@@ -6,7 +6,7 @@ through v0.16 are **hardware-verified** per the README table; items marked
 
 ## What you're flashing
 
-- `images/cpz-alpine-0.1.0.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
+- `images/cpz-alpine-0.19.0.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
   FAT32 boot (256 MiB) + ext4 root (1.5 GiB), MBR disk id `0x10c0ffee`
 - Base: Alpine Linux 3.24 aarch64, musl + BusyBox + OpenRC, **no systemd**
 - Kernel: M5 stock `6.18.33+rpt-rpi-v8` (bit-exact from the factory image,
@@ -18,10 +18,10 @@ through v0.16 are **hardware-verified** per the README table; items marked
 ## Flashing
 
 ```sh
-sha256sum -c cpz-alpine-0.1.0.img.gz.sha256     # verify download
+sha256sum -c cpz-alpine-0.19.0.img.gz.sha256     # verify download
 # /dev/sdX = the LAB microSD card (NOT the stock card, NOT a disk!)
 lsblk                                          # triple-check sizes
-gunzip -c cpz-alpine-0.1.0.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
+gunzip -c cpz-alpine-0.19.0.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 ```
 
@@ -65,9 +65,12 @@ unused for now (fine for testing; we'll auto-grow later).
       `console=serial0` and `/etc/inittab` only a ttyS0 getty.
 - [ ] **T1c — HDMI app** [TEST]: open the **HDMI** card → the switch
       reflects the live session; ENTER flips it On → sway + waybar
-      appear on the monitor; Off → the session stops. Reboot with it On
-      and the session starts by itself (`/var/lib/applaunch/hdmi-desktop`
-      holds "1"); turn it Off before the next reboot to keep HDMI dark.
+      appear on the monitor, and the LCD shows **HDMI LOCKED** after a
+      1 s grace period (the launcher stops reading the internal keypad so
+      keys do not double-type). Off → the session stops and the LCD
+      unlocks. Reboot with it On and the session starts by itself
+      (`/var/lib/applaunch/hdmi-desktop` holds "1"); turn it Off before
+      the next reboot to keep HDMI dark.
 - [ ] **T2 — keyboard (through the launcher)** [TEST]: ←/→ (Z/X) cycle the
       carousel; Enter opens the focused card; ESC backs out, long-press
       ESC returns home from anywhere. The SYM layer: open the **CLI**
@@ -114,14 +117,35 @@ unused for now (fine for testing; we'll auto-grow later).
       while held; double-press behavior (locked mode) is the driver FSM's.
 - [ ] **T9 — audio**: `speaker-test -c2 -twav` (ES8389 speaker path) and
       `alsamixer` (F6 to pick the es8389 card).
-- [ ] **T10 — HDMI desktop (on demand)**: plug into a monitor. Nothing
-      starts by itself (hotplug prints an "ask" notice on the LCD).
-      Run `cpz-desktop start`: sway + waybar + foot come up in ~5 s,
-      ~90 MiB resident; Super+Enter terminal, Super+d launcher,
-      Super+Shift+e exits. `cpz-desktop stop` reclaims the RAM. The
-      internal LCD console is untouched throughout (fbtft is not a
-      KMS output). Internal keyboard types — v0.14.1 assigns it to
-      seat0 (M5's stock rule exiles it to a private seat).
+- [ ] **T10 — HDMI desktop (on demand)** [TEST]: plug into a monitor.
+      Nothing starts by itself (hotplug prints an "ask" notice on the
+      LCD). Run `cpz-desktop start`: sway + waybar + foot come up in ~5 s,
+      ~90 MiB resident. The internal LCD console is untouched throughout
+      (fbtft is not a KMS output).
+      **Internal keypad in sway (v0.19.0):** Alt is scoped to Super for
+      the internal device only, so the stock bindings work:
+      Alt+Enter terminal, Alt+d launcher, Alt+Shift+E stop.
+      The cpz XKB layout (`/usr/share/X11/xkb/symbols/cpz`) is used with
+      the `cpz:sym` XKB option. XKB's `inet(evdev)` section runs after
+      the layout and redefines the internal SYM codes as media keys;
+      options run last, so `cpz:sym` supplies the real symbols. The
+      option is set for all keyboards because the Wayland seat shares one
+      keymap; cpz includes `us(basic)`, so external keyboards still type
+      US. Alt-as-Super is scoped to the internal device. SYM+1..0 and
+      SYM+Q..P then type the printed characters in sway/foot.
+      Verified on hardware: SYM+1=!, SYM+2=@, SYM+Q=~, SYM+;=;,
+      Fn+Z=Left. XKB options are comma-separated (`cpz:sym,altwin:...`);
+      a space-separated list is one unknown option and is dropped.
+      Arrows are Fn+Z/X/C/F; use Alt+Fn+Z/X/C/F to focus and
+      Alt+Shift+Fn+Z/X/C/F to move a window.
+      **Lock:** after 1 s the LCD shows **HDMI LOCKED** and the launcher
+      stops consuming keypad events. Hold **ESC for 2 s** to stop the
+      desktop and unlock the LCD (a single ESC does nothing). Alt+Shift+E
+      on the internal keypad, or Super+Shift+E on an external keyboard,
+      also stops the desktop. Any sway exit unlocks the LCD and writes
+      the HDMI preference off.
+      **External keyboard:** unchanged — real Super/Alt and the US layout;
+      it goes straight to sway, not the launcher.
 - [ ] **T11 — camera (field-verified method)**: with v4l-utils on the
       device (kept across reflashes by the persistence pkglist):
       ```sh

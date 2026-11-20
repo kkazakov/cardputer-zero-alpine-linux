@@ -104,12 +104,20 @@ start_session() {
 
     # The session. As root we enter cpz's account; as cpz we run directly
     # (a `su - cpz` from cpz would prompt for a password).
+    #
+    # XKB_DEFAULT_LAYOUT=cpz + XKB_DEFAULT_OPTIONS=cpz:sym: seed the
+    # initial seat keymap. The seat keymap is built from the default
+    # xkb keymap, NOT from the per-device input blocks, so both the
+    # layout and the option must be in the environment or clients keep
+    # the US media keys (Sym+1 -> XF86Tools). cpz includes us(basic), so
+    # external keyboards still type US; Alt-as-Super stays scoped to
+    # 1:1:tca8418c in sway.config.
     if [ "$ME_UID" = 0 ]; then
         LIBSEAT_BACKEND=seatd setsid su - cpz -c \
-            "LIBSEAT_BACKEND=seatd XDG_RUNTIME_DIR=/run/user/1000 dbus-run-session sway -c /etc/cpz/sway.config" \
+            "LIBSEAT_BACKEND=seatd XKB_DEFAULT_LAYOUT=cpz XKB_DEFAULT_OPTIONS=cpz:sym XDG_RUNTIME_DIR=/run/user/1000 dbus-run-session sway -c /etc/cpz/sway.config" \
             >/dev/null 2>&1 </dev/null &
     else
-        LIBSEAT_BACKEND=seatd setsid dbus-run-session sway -c /etc/cpz/sway.config \
+        LIBSEAT_BACKEND=seatd XKB_DEFAULT_LAYOUT=cpz XKB_DEFAULT_OPTIONS=cpz:sym setsid dbus-run-session sway -c /etc/cpz/sway.config \
             >/dev/null 2>&1 </dev/null &
     fi
 

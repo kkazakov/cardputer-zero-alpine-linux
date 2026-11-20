@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.18.3
+VER=0.19.0
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -446,6 +446,32 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
             /mnt/rootfs/usr/share/keymaps/tca8418_keypad_m5stack_keymap.map \
         && echo "OK: launcher SYM keymap (keycap-corrected) shipped" \
         || echo "FAIL: launcher SYM keymap missing or wrong"
+    # v0.19.0: the launcher runs as cpz, so a 0600 keymap is unreadable and
+    # the launcher silently falls back to the stale stock table.
+    [ "$(stat -c %a /mnt/rootfs/usr/share/keymaps/tca8418_keypad_m5stack_keymap.map 2>/dev/null)" = "644" ] \
+        && echo "OK: launcher SYM keymap readable by cpz (0644)" \
+        || echo "FAIL: launcher SYM keymap not 0644 — cpz falls back to stale map"
+    # v0.19.0: internal-keypad XKB sym option + Super remap.
+    [ -s /mnt/rootfs/usr/share/X11/xkb/symbols/cpz ] \
+        && grep -q 'xkb_symbols "sym"' /mnt/rootfs/usr/share/X11/xkb/symbols/cpz \
+        && grep -q 'replace key <FK13>' /mnt/rootfs/usr/share/X11/xkb/symbols/cpz \
+        && grep -q 'replace key <LVL5>' /mnt/rootfs/usr/share/X11/xkb/symbols/cpz \
+        && grep -q 'include "us(basic)"' /mnt/rootfs/usr/share/X11/xkb/symbols/cpz \
+        && echo "OK: cpz XKB sym option shipped (FK13.. + LVL5..)" \
+        || echo "FAIL: cpz XKB sym option missing or wrong"
+    if grep -q 'cpz:sym' /mnt/rootfs/usr/share/X11/xkb/rules/evdev 2>/dev/null \
+        || grep -q 'cpz:sym' /mnt/rootfs/usr/share/xkeyboard-config-2/rules/evdev 2>/dev/null; then
+        echo "OK: cpz:sym mapped in XKB rules"
+    else
+        echo "FAIL: cpz:sym missing from XKB rules"
+    fi
+    grep -Fq 'xkb_options "cpz:sym,altwin:swap_lalt_lwin"' /mnt/rootfs/etc/cpz/sway.config \
+        && grep -q 'XKB_DEFAULT_OPTIONS=cpz:sym' /mnt/rootfs/usr/local/bin/cpz-desktop \
+        && echo "OK: seat default and internal keyboard load cpz:sym (comma-separated with altwin)" \
+        || echo "FAIL: sway/desktop missing cpz:sym default or comma-separated internal options"
+    grep -q 'cpz-desktop stop' /mnt/rootfs/etc/cpz/sway.config \
+        && echo "OK: Mod+Shift+E stops the desktop (LCD unlock path)" \
+        || echo "FAIL: sway exit binding does not stop the desktop"
     # launcher state dir (settings.json/config.json) — init script recreates,
     # but the image must ship it for first boot
     [ -d /mnt/rootfs/var/lib/applaunch ] \

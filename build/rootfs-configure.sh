@@ -68,15 +68,43 @@ echo "== overlay permissions =="
 # were shipping as cpz:cpz. Everything under /etc, /usr/local/bin and
 # /boot is root-owned, period.
 chown -R root:root /etc /usr/local/bin /boot /usr/share/keymaps \
-    /usr/share/consolefonts 2>/dev/null || true
+    /usr/share/consolefonts /usr/share/X11 2>/dev/null || true
 chmod 755 /etc/local.d/*.start 2>/dev/null || true
 chmod 755 /usr/local/bin/* 2>/dev/null || true
 chmod 644 /etc/profile.d/*.sh 2>/dev/null || true
+# v0.19.0: the launcher runs as cpz, not root. The SYM keymap was authored
+# 0600 on the build host, so `cp -a` shipped it unreadable and APPLaunch
+# silently fell back to the stale stock table (Sym+1 typed nothing). The
+# map is not secret; make it readable. The new XKB symbols file must be
+# readable by the sway session too.
+chmod 644 /usr/share/keymaps/*.map 2>/dev/null || true
+chmod 644 /usr/share/X11/xkb/symbols/cpz 2>/dev/null || true
 # v0.17.2: /etc/cpz carries the on-demand desktop config (sway.config) and
 # the hotplug consent mode. It shipped 0600 root-only, so `cpz-desktop
 # start` (sway as the cpz user) could not read its own config and died
 # with "Unable to open /etc/cpz/sway.config". Not secret — world-readable.
 chmod 644 /etc/cpz/* 2>/dev/null || true
+
+# v0.19.0: the cpz SYM mapping is an XKB *option* (`cpz:sym`), because
+# the default rules compose `pc+LAYOUT+inet(evdev)` and inet(evdev) is
+# applied last, redefining FK13..FK24 as media keys. Options are applied
+# after the layout, so the option wins. Map the local option in whatever
+# rules file this xkeyboard-config ships (Alpine 3.20 uses
+# /usr/share/X11/xkb, newer xkeyboard-config-2 uses its own tree).
+for rules in /usr/share/X11/xkb/rules/evdev \
+             /usr/share/xkeyboard-config-2/rules/evdev; do
+    [ -f "$rules" ] || continue
+    grep -q '^[[:space:]]*cpz:sym[[:space:]]*=' "$rules" && continue
+    awk '
+        /altwin:swap_lalt_lwin/ && !done {
+            print;
+            print "  cpz:sym                        = +cpz(sym)";
+            done = 1;
+            next;
+        }
+        { print }
+    ' "$rules" > "$rules.new" && mv "$rules.new" "$rules"
+done
 ls -l /etc/local.d/ /etc/profile.d/ /etc/cpz/
 
 # THE BIG ONE (v0.7): Docker's marker file /.dockerenv is created in every

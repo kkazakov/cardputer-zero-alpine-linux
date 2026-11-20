@@ -1,0 +1,82 @@
+// CPZ-Alpine US layout + internal TCA8418 SYM layer
+//
+// The M5 TCA8418 driver emits high evdev codes for the SYM layer:
+//   183..192  ! @ # $ % ^ & * ( )
+//   193..202  ~ ` _ - + = [ ] { }
+//   209..213  " < > \ |
+//   214..217  , . / ?
+//   231..233  ; : '
+//
+// Stock XKB decodes 183+ as F13..F24 and media keys. Two XKB quirks
+// matter here, both measured on hardware:
+//
+//  1. XKB keycode = evdev code + 8. Keycodes 191..202 have canonical
+//     names <FK13>..<FK24>; <I191>..<I202> are only aliases, and a
+//     `key <I191>` / `replace key <I191>` statement is silently ignored.
+//     Keycodes 203..207 are <LVL5>, <ALT>, <META>, <SUPR>, <HYPR>, not
+//     <I203>..<I207>. Keycodes 208+ use <I208>.. as usual.
+//
+//  2. The default XKB rules compose `pc+LAYOUT+inet(evdev)`. The
+//     inet(evdev) section comes LAST and redefines FK13..FK24 and the
+//     media keys, so key definitions in the basic layout section are
+//     overridden. That is why Sym+1 still typed XF86Tools even with the
+//     layout loaded.
+//
+// The fix is an XKB *option*: options are applied after inet(evdev).
+// `cpz:sym` (mapped in the rules file) carries the SYM key definitions.
+// Sway sets it globally (all keyboards share the seat keymap; external
+// keyboards keep US basics), and adds altwin:swap_lalt_lwin only for
+// the internal keypad.
+//
+// Measured on hardware with wev; the runtime keymap lives at
+// /usr/share/keymaps/tca8418_keypad_m5stack_keymap.map.
+
+default partial alphanumeric_keys
+xkb_symbols "basic" {
+    include "us(basic)"
+    name[Group1] = "CPZ US + SYM";
+};
+
+// Applied after inet(evdev) via `xkb_options cpz:sym`.
+partial alphanumeric_keys
+xkb_symbols "sym" {
+    // Number row, Sym+1..0
+    replace key <FK13> { [ exclam        ] };
+    replace key <FK14> { [ at            ] };
+    replace key <FK15> { [ numbersign    ] };
+    replace key <FK16> { [ dollar        ] };
+    replace key <FK17> { [ percent       ] };
+    replace key <FK18> { [ asciicircum   ] };
+    replace key <FK19> { [ ampersand     ] };
+    replace key <FK20> { [ asterisk      ] };
+    replace key <FK21> { [ parenleft     ] };
+    replace key <FK22> { [ parenright    ] };
+
+    // Top letter row, Sym+Q..P
+    replace key <FK23> { [ asciitilde    ] };
+    replace key <FK24> { [ grave         ] };
+    replace key <LVL5> { [ underscore    ] };
+    replace key <ALT>  { [ minus         ] };
+    replace key <META> { [ plus          ] };
+    replace key <SUPR> { [ equal         ] };
+    replace key <HYPR> { [ bracketleft   ] };
+    replace key <I208> { [ bracketright  ] };
+    replace key <I209> { [ braceleft     ] };
+    replace key <I210> { [ braceright    ] };
+
+    // Home row, Sym+A..L
+    replace key <I217> { [ quotedbl      ] };
+    replace key <I218> { [ less          ] };
+    replace key <I219> { [ greater       ] };
+    replace key <I220> { [ backslash     ] };
+    replace key <I221> { [ bar           ] };
+
+    // Bottom row, Sym+N/M and Sym+; : '
+    replace key <I222> { [ comma         ] };
+    replace key <I223> { [ period        ] };
+    replace key <I224> { [ slash         ] };
+    replace key <I225> { [ question      ] };
+    replace key <I239> { [ semicolon     ] };
+    replace key <I240> { [ colon         ] };
+    replace key <I241> { [ apostrophe    ] };
+};
