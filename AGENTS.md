@@ -5,10 +5,11 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.20.0** (base repo `main`; the launcher fork is a
-sibling checkout in `launcher/`, branch `alpine`). v0.20.0 adds Files
-and Camera as default launcher apps, with their content under
-`/home/cpz` persisted through `/cfg`.
+Current release: **v0.20.1** (base repo `main`; the launcher fork is a
+sibling checkout in `launcher/`, branch `alpine`). v0.20.0 added Files
+and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
+startup and opens Files in `/home/cpz`, with all content persisted
+through `/cfg`.
 
 ---
 
@@ -141,7 +142,7 @@ missing. Never copy keys, credentials or `build/wifi-secret/`.
 
 ---
 
-# State (v0.20.0)
+# State (v0.20.1)
 
 ## What the image is
 
@@ -151,7 +152,7 @@ missing. Never copy keys, credentials or `build/wifi-secret/`.
   (`/dev/fb1`); Calculator, Files and Camera are the other app binaries.
 - **No app store, no demo games, no Python terminal.** Home carousel:
   Settings, CLI, SSH, IP Panel, Files, Camera, Calculator, **HDMI**.
-- Files starts in `~/Files`; Camera stills go to
+- Files starts in `/home/cpz`; Camera stills go to
   `~/Pictures/DCIM/Camera`, clips to `~/Videos/Camera`. All of it lives
   under `/home/cpz`, so the `/cfg` snapshot preserves it across reflashes.
 - Network: NetworkManager (`nmcli`) owns eth0/wlan0; packages
@@ -170,7 +171,8 @@ missing. Never copy keys, credentials or `build/wifi-secret/`.
 - `cpz` groups: `wheel video input audio i2c seat`; passwordless sudo
   (`/etc/sudoers.d/cpz`, 0440, `cpz ALL=(ALL) NOPASSWD: ALL`).
 - udev rules `99-cpz-device-groups.rules`: `i2c-*` and `rtc*` →
-  group `i2c` 0660; sound nodes → group `audio` 0660. (udev's stock
+  group `i2c` 0660; sound nodes → group `audio` 0660; `dma_heap` nodes →
+  group `video` 0660 (Camera frame buffers). (udev's stock
   `SUBSYSTEM=="graphics" GROUP="video"` covers `/dev/fb1`.)
 - `/var/lib/applaunch` is owned by `cpz`; `cpz-restore.start` re-owns it
   after extracting the root-created `/cfg` archive.
@@ -289,6 +291,15 @@ Added/fixed (all in `launcher/`):
   (`cat | ssh 'cat >'`), restart the service, capture `/dev/fb1`.
 - Launcher log: `/var/log/applaunch.log` (now captures stdout+stderr,
   owned `cpz:cpz`).
+- **Camera "MIPI-CSI camera unavailable"** has three independent causes,
+  all fixed in v0.20.1: `/dev/dma_heap/*` is `0600 root:root` (udev rule
+  must put it in `video`), Alpine's `libcamera` package lacks the RPi VC4
+  IPA (`libcamera-ipa`) and `imx219.json` tuning/proxy
+  (`libcamera-raspberrypi`), and Camera 1.0.2 refuses to start without
+  `rpi_apps.yaml` under `/usr/share/libcamera/pipeline/rpi/vc4/`.
+  Verify from `/var/log/applaunch.log`: it should log
+  `Using rpicam-apps pipeline configuration`, `Adding camera ... imx219`
+  and `Camera backend selected: libcamera`.
 
 ### Persistence (`cpz-save` / `cpz-restore.start`)
 - **Alpine's only tar is busybox, and it ABORTS the whole extraction at
@@ -361,7 +372,7 @@ The upstream store is gone from the fork, but the apps are relevant:
 | `build/` | Pipeline: `20-rootfs.sh`, `25-launcher.sh`, `26-apps.sh`, `30-image.sh`, `flash-cpz.sh`, `push-remote.sh`, `INPUTS.md` |
 | `build/boot-config/` | `cmdline.txt` (serial-only console), `config.txt` (splash off, overlays) |
 | `rootfs-overlay/etc/local.d/` | `cpz-restore.start`, `cpz-hdmi-boot.start`, `cpz-audio.start`, `cpz-wifi.start`, `cpz-leds.start`, `console.start` |
-| `rootfs-overlay/etc/udev/rules.d/` | `99-cpz-device-groups.rules` (i2c/rtc/audio groups) |
+| `rootfs-overlay/etc/udev/rules.d/` | `99-cpz-device-groups.rules` (i2c/rtc/audio/dma_heap groups) |
 | `rootfs-overlay/etc/sudoers.d/cpz` | NOPASSWD grant (forced 0440 by `rootfs-configure.sh`) |
 | `rootfs-overlay/usr/local/bin/cpz-desktop` | on-demand HDMI session (root or cpz) |
 | `rootfs-overlay/usr/local/bin/cpz-save` | persistence snapshot → `/cfg/save.tar.gz` (hourly cron + manual) |

@@ -30,6 +30,9 @@ APK_FLAGS="--no-cache --quiet"
 # helper error on the HDMI session.
 # v0.20.0: Files (video preview via ffmpeg; ALSA audio) and Camera
 # (libcamera 0.7.1 + v4l2 + fmt/cjson, JPEG/PNG/Freetype).
+# v0.20.1: libcamera-raspberrypi supplies the RPi VC4 IPA proxy and the
+# per-sensor tuning JSON (imx219.json); without it libcamera registers no
+# camera and Camera reports "MIPI-CSI camera unavailable".
 PKGS="openrc busybox-openrc eudev eudev-openrc eudev-libs kbd dropbear
 iw doas i2c-tools alsa-utils alsa-lib usbutils
 tzdata openssl ca-certificates mkinitfs terminus-font bluez bluez-openrc
@@ -38,7 +41,7 @@ waybar bemenu dbus dbus-openrc tilix swaybg
 freetype libinput libxkbcommon dbus-libs glib curl libstdc++ bash
 networkmanager networkmanager-openrc networkmanager-wifi networkmanager-cli
 wpa_supplicant sudo
-ffmpeg v4l-utils-libs cjson libcamera libcamera-ipa"
+ffmpeg v4l-utils-libs cjson libcamera libcamera-ipa libcamera-raspberrypi"
 
 # --- builder container must exist (owns the /work volume, runs 30-image) ---
 if ! docker exec "$BUILDER" true >/dev/null 2>&1; then

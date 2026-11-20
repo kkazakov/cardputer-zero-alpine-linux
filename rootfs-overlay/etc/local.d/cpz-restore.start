@@ -45,10 +45,11 @@
 # NetworkManager.conf / conf.d / dispatcher.d tweak was lost at the next
 # reflash even though the profiles themselves came back.
 #
-# v0.20.0: Files and Camera keep user content under /home/cpz (~/Files,
-# ~/Pictures/DCIM/Camera, ~/Videos/Camera, ~/.config/cardputerzero).
-# The pass A home/cpz merge below restores all of it, with archive-wins
-# semantics, after the new image's empty home skeleton has been laid down.
+# v0.20.0: Files and Camera keep user content under /home/cpz (the Files
+# browser itself opens that tree, plus ~/Pictures/DCIM/Camera,
+# ~/Videos/Camera and ~/.config/cardputerzero). The pass A home/cpz merge
+# below restores all of it, with archive-wins semantics, after the new
+# image's empty home skeleton has been laid down.
 
 CFG=/cfg
 A=$CFG/save.tar.gz

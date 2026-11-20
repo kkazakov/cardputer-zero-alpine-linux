@@ -10,11 +10,11 @@
 # list (/cfg/pkglist.txt — re-installed automatically at the next boot
 # after a reflash).
 #
-# v0.20.0 Files/Camera: the Files browser starts in ~/Files and Camera
-# writes stills/clips to ~/Pictures/DCIM/Camera and ~/Videos/Camera, with
-# its resolution setting in ~/.config/cardputerzero. All of it lives under
-# /home/cpz and is therefore inside the home/cpz member below — that is
-# what carries file-manager content and camera media through a reflash.
+# v0.20.1 Files/Camera: the Files browser opens /home/cpz itself and
+# Camera writes stills/clips to ~/Pictures/DCIM/Camera and ~/Videos/Camera,
+# with its resolution setting in ~/.config/cardputerzero. All of it lives
+# under /home/cpz and is therefore inside the home/cpz member below — that
+# is what carries file-manager content and camera media through a reflash.
 # If an app ever moves user data outside /home, add its root here or it
 # will not be saved (the restore side only copies allow-listed paths).
 #

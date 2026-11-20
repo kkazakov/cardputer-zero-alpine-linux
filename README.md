@@ -3,21 +3,22 @@
 An extremely light, purpose-built **Alpine Linux** operating system for the
 **M5Stack CardputerZero** (Raspberry Pi CM0 / RP3A0, Broadcom BCM2837).
 
-**Status: v0.20.0.** The launcher face of the stock M5 image, on Alpine:
+**Status: v0.20.1.** The launcher face of the stock M5 image, on Alpine:
 the APPLaunch UI (carousel, settings, Files, Camera, calculator, CLI
 terminal) owns the internal LCD and boots straight into it. HDMI/Sway is
 opt-in and stays dark until you start it. The v0.19.0 Sway keyboard and
-HDMI-lock work is in this image; v0.20.0 adds the Files browser and
-Camera as default apps (both native musl builds), with their content
-under `/home/cpz` so reflashes preserve it. The device test checklist is
-in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
+HDMI-lock work is in this image; v0.20.0 added the Files browser and
+Camera as default apps (both native musl builds), and v0.20.1 fixes
+MIPI-CSI camera startup and opens Files in `/home/cpz`. Their content
+lives under `/home/cpz`, so reflashes preserve it. The device test
+checklist is in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
 | Subsystem | State | Notes |
 |---|---|---|
-| **Launcher UI (APPLaunch)** | ✅ v0.20.0 | upstream M5 carousel on the 320×170 LCD, built as a musl aarch64 binary (`build/25-launcher.sh`), OpenRC `applaunch` service running as user `cpz` |
+| **Launcher UI (APPLaunch)** | ✅ v0.20.1 | upstream M5 carousel on the 320×170 LCD, built as a musl aarch64 binary (`build/25-launcher.sh`), OpenRC `applaunch` service running as user `cpz` |
 | Launcher: Calculator | ✅ | `M5CardputerZero-Calculator` built from the same launcher checkout |
-| Launcher: Files | ✅ v0.20.0 | native musl build of CardputerZero/Files (`build/26-apps.sh`); starts in `~/Files`, previews text/images/audio/video (`ffmpeg` for video), enabled by default |
-| Launcher: Camera | ✅ v0.20.0 | native musl build of Camera 1.0.2, pinned to the image's libcamera 0.7.1 ABI; stills in `~/Pictures/DCIM/Camera`, clips in `~/Videos/Camera`, gallery built in |
+| Launcher: Files | ✅ v0.20.1 | native musl build of CardputerZero/Files (`build/26-apps.sh`); starts in `/home/cpz`, previews text/images/audio/video (`ffmpeg` for video), enabled by default |
+| Launcher: Camera | ✅ v0.20.1 | native musl build of Camera 1.0.2, pinned to the image's libcamera 0.7.1 ABI; MIPI-CSI via RPi VC4 IPA + tuning, stills in `~/Pictures/DCIM/Camera`, clips in `~/Videos/Camera`, gallery built in |
 | Launcher: Settings | ✅ | Wi-Fi/Ethernet, Bluetooth, brightness/volume, battery + BQ calibrate, Date & Time; RPi-OS-only updater/ADB pages hidden |
 | Launcher: CLI terminal | ✅ | interactive bash over a PTY, rendered in LVGL |
 | Console | ✅ | **14-pin expansion UART** at 115200 + SSH; no VT getty and no HDMI kernel console. HDMI stays dark until the desktop starts. The USB-C serial gadget is retired (dwc2 is host-only for Ethernet/USB-A) |
@@ -193,7 +194,7 @@ sudo ./build/flash-cpz.sh /dev/sdX [image.img.gz]
 Writes the fixed 1.8 GiB image (256 MiB FAT boot + 1.5 GiB ext4 root),
 then re-creates the **CPZDATA** partition at a fixed offset and formats it
 only if missing. On the device, hourly cron and on-demand `cpz-save`
-snapshot `/root`, `/home/cpz` (including `~/Files`, `~/Pictures/DCIM/Camera`
+snapshot `/root`, `/home/cpz` (the Files home tree, `~/Pictures/DCIM/Camera`
 and `~/Videos/Camera`), dropbear keys, `/etc/wpa_supplicant`,
 `/etc/hostname`, `/etc/hosts`, the full NetworkManager config tree,
 `/var/lib/applaunch`, and additive `/etc/local.d`, `/etc/conf.d`, and

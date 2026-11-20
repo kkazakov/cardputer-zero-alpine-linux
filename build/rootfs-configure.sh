@@ -68,10 +68,13 @@ echo "== overlay permissions =="
 # were shipping as cpz:cpz. Everything under /etc, /usr/local/bin and
 # /boot is root-owned, period.
 chown -R root:root /etc /usr/local/bin /boot /usr/share/keymaps \
-    /usr/share/consolefonts /usr/share/X11 2>/dev/null || true
+    /usr/share/consolefonts /usr/share/X11 /usr/share/libcamera 2>/dev/null || true
 chmod 755 /etc/local.d/*.start 2>/dev/null || true
 chmod 755 /usr/local/bin/* 2>/dev/null || true
 chmod 644 /etc/profile.d/*.sh 2>/dev/null || true
+# v0.20.1: the RPi pipeline YAML is authored on the build host (0600) and
+# must be readable by libcamera; cp -a would otherwise ship it unreadable.
+chmod 644 /usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml 2>/dev/null || true
 # v0.19.0: the launcher runs as cpz, not root. The SYM keymap was authored
 # 0600 on the build host, so `cp -a` shipped it unreadable and APPLaunch
 # silently fell back to the stale stock table (Sym+1 typed nothing). The
@@ -209,13 +212,12 @@ chmod 0440 /etc/sudoers.d/cpz 2>/dev/null || true
 # hdmi-desktop preference here.
 chown -R cpz:cpz /var/lib/applaunch 2>/dev/null || true
 
-# v0.20.0: Files and Camera write user content under /home/cpz — the
-# Files browser starts in ~/Files, Camera saves stills to
+# v0.20.1: Files opens /home/cpz directly; Camera saves stills to
 # ~/Pictures/DCIM/Camera and clips to ~/Videos/Camera. cpz-save archives
-# the whole home tree into /cfg/save.tar.gz, so these survive a reflash;
-# create them up front so the first app launch does not race a missing
-# parent directory.
-for d in /home/cpz/Files /home/cpz/Pictures/DCIM/Camera /home/cpz/Videos/Camera; do
+# the whole home tree into /cfg/save.tar.gz, so all of it survives a
+# reflash; create the Camera parents up front so the first capture does
+# not race a missing directory.
+for d in /home/cpz/Pictures/DCIM/Camera /home/cpz/Videos/Camera; do
     mkdir -p "$d"
     chown cpz:cpz "$d"
 done

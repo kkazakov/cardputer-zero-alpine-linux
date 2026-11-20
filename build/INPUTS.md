@@ -1,4 +1,4 @@
-# build/INPUTS.md — pinned build inputs (v0.20.0)
+# build/INPUTS.md — pinned build inputs (v0.20.1)
 
 Everything this build consumes, with content hashes. Reproduce by
 fetching these exact artifacts; the build is deterministic against them.
@@ -45,6 +45,13 @@ Built natively (aarch64/musl) by `build/26-apps.sh` in the persistent
   commit `54885137f52a888d8d194fd9e1beefbd68b1a999`
   - pinned to 1.0.2 because Camera 1.0.3+ requires libcamera >= 0.7.2
     (1.0.4 requires 0.8.0) while Alpine 3.24 ships libcamera 0.7.1
+  - runtime needs `libcamera-ipa` (VC4 IPA module) **and**
+    `libcamera-raspberrypi` (RPi IPA proxy + `imx219.json` tuning);
+    `rpi_apps.yaml` is not packaged, so
+    `rootfs-overlay/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml`
+    carries the upstream `raspberrypi/libcamera` file. Without all three
+    libcamera registers no camera and Camera reports "MIPI-CSI camera
+    unavailable". The udev rule also opens `/dev/dma_heap/*` to `video`.
   - one build patch: `build/patches/camera-native-musl.patch` removes
     `/usr/include` from its target include lists, because an explicit
     `-isystem /usr/include` breaks Alpine musl's fortify

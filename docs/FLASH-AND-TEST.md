@@ -1,13 +1,14 @@
-# FLASH AND TEST — CPZ-Alpine 0.20.0
+# FLASH AND TEST — CPZ-Alpine 0.20.1
 
 Built offline from M5's own stock image (Phase-A kernel graft). Core
-hardware support is field-verified through v0.19.0; v0.20.0 adds the
-Files browser and Camera as default launcher applications. Items marked
+hardware support is field-verified through v0.19.0; v0.20.0 added the
+Files browser and Camera as default launcher applications, and v0.20.1
+fixes MIPI-CSI camera startup and opens Files in `/home/cpz`. Items marked
 [TEST] below still deserve one device pass.
 
 ## What you're flashing
 
-- `images/cpz-alpine-0.20.0.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
+- `images/cpz-alpine-0.20.1.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
   FAT32 boot (256 MiB) + ext4 root (1.5 GiB), MBR disk id `0x10c0ffee`
 - Base: Alpine Linux 3.24 aarch64, musl + BusyBox + OpenRC, **no systemd**
 - Kernel: M5 stock `6.18.33+rpt-rpi-v8` (bit-exact from the factory image,
@@ -19,10 +20,10 @@ Files browser and Camera as default launcher applications. Items marked
 ## Flashing
 
 ```sh
-sha256sum -c cpz-alpine-0.20.0.img.gz.sha256     # verify download
+sha256sum -c cpz-alpine-0.20.1.img.gz.sha256     # verify download
 # /dev/sdX = the LAB microSD card (NOT the stock card, NOT a disk!)
 lsblk                                          # triple-check sizes
-gunzip -c cpz-alpine-0.20.0.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
+gunzip -c cpz-alpine-0.20.1.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 ```
 
@@ -90,22 +91,23 @@ unused for now (fine for testing; we'll auto-grow later).
       it across a reboot. The System menu shows Storage / Licenses /
       Reboot but NO Software-updater page, and no Developer/ADB section —
       those are RPi-OS-only and hidden on Alpine.
-- [ ] **T2d — Files and Camera (v0.20.0)** [TEST]: the carousel shows
+- [ ] **T2d — Files and Camera (v0.20.1)** [TEST]: the carousel shows
       **Files** and **Camera** between IP Panel and Calculator, both
       enabled by default (Settings → Launcher lists them as preinstalled).
-      Files opens in `~/Files`; create/copy/rename a file there, then
-      check `ls -l /home/cpz/Files`. Camera opens on `/dev/video0`, takes
-      a still, and the gallery shows it; the file lands in
-      `/home/cpz/Pictures/DCIM/Camera`. Both apps must return to the
-      carousel with ESC. A missing app means the Files/Camera binary did
-      not ship — see `/var/log/applaunch.log` for a rejected `.desktop`.
-- [ ] **T2e — Files/Camera persistence (v0.20.0)** [TEST]: put a marker
-      file in `~/Files`, take one photo, run `cpz-save`, then reflash the
-      same card with `build/flash-cpz.sh` (it preserves `CPZDATA`). After
-      boot, the marker and the photo are back. For a quick archive check
-      without reflashing:
+      Files opens in `/home/cpz`; create/copy/rename a file there, then
+      check `ls -la /home/cpz`. Camera opens the MIPI-CSI sensor through
+      libcamera, shows a live preview, takes a still, and the gallery
+      shows it; the file lands in `/home/cpz/Pictures/DCIM/Camera`. Both
+      apps must return to the carousel with ESC. A missing app means the
+      Files/Camera binary did not ship — see `/var/log/applaunch.log` for
+      a rejected `.desktop`.
+- [ ] **T2e — Files/Camera persistence (v0.20.1)** [TEST]: put a marker
+      file in `/home/cpz`, take one photo, run `cpz-save`, then reflash
+      the same card with `build/flash-cpz.sh` (it preserves `CPZDATA`).
+      After boot, the marker and the photo are back. For a quick archive
+      check without reflashing:
       ```sh
-      tar -tzf /cfg/save.tar.gz | grep -E 'home/cpz/(Files|Pictures/DCIM/Camera)'
+      tar -tzf /cfg/save.tar.gz | grep -E 'home/cpz/(notes.txt|Pictures/DCIM/Camera)'
       ```
       The whole `/home/cpz` tree is pass A (archive wins) in
       `cpz-restore.start`, so Files content and camera media ride the

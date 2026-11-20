@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.20.0
+VER=0.20.1
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -572,9 +572,10 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
             || echo "FAIL: $app is not a musl aarch64 binary"
     done
     [ -x /mnt/rootfs/usr/local/bin/cpz-files ] \
-        && grep -q 'FILES_START_DIR' /mnt/rootfs/usr/local/bin/cpz-files \
-        && echo "OK: Files wrapper starts in the persisted ~/Files tree" \
-        || echo "FAIL: cpz-files wrapper missing or does not set FILES_START_DIR"
+        && grep -q 'FILES_START_DIR=${FILES_START_DIR:-$HOME}' \
+            /mnt/rootfs/usr/local/bin/cpz-files \
+        && echo "OK: Files wrapper starts in the persisted /home/cpz tree" \
+        || echo "FAIL: cpz-files wrapper missing or does not default to HOME"
     for f in files.desktop camera_app.desktop; do
         [ -s "/mnt/rootfs/usr/share/APPLaunch/applications/$f" ] \
             && echo "OK: $f launcher entry present" \
@@ -602,6 +603,17 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
         && [ -s /mnt/rootfs/usr/share/camera_app/audio/shutter.wav ] \
         && echo "OK: Camera runtime fonts/audio installed" \
         || echo "FAIL: Camera asset tree incomplete"
+    [ -s /mnt/rootfs/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml ] \
+        && echo "OK: rpicam-apps pipeline config installed" \
+        || echo "FAIL: rpi_apps.yaml missing — Camera refuses to start"
+    [ -s /mnt/rootfs/usr/share/libcamera/ipa/rpi/vc4/imx219.json ] \
+        && [ -x /mnt/rootfs/usr/libexec/libcamera/raspberrypi_ipa_proxy ] \
+        && echo "OK: Raspberry Pi libcamera IPA tuning + proxy installed" \
+        || echo "FAIL: libcamera-raspberrypi IPA files missing"
+    grep -q 'SUBSYSTEM=="dma_heap"' \
+        /mnt/rootfs/etc/udev/rules.d/99-cpz-device-groups.rules \
+        && echo "OK: dma-heap nodes are video-group accessible" \
+        || echo "FAIL: no dma_heap udev rule (Camera gets EACCES)"
     [ -x /mnt/rootfs/usr/bin/ffmpeg ] \
         && echo "OK: ffmpeg installed (Files video preview)" \
         || echo "FAIL: ffmpeg missing — Files video preview dead"
@@ -612,7 +624,7 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     done
     # Files/Camera content lives under /home/cpz; cpz-save must keep that
     # tree in the /cfg snapshot and cpz-restore must merge it back.
-    [ -d /mnt/rootfs/home/cpz/Files ] \
+    [ -d /mnt/rootfs/home/cpz ] \
         && [ -d /mnt/rootfs/home/cpz/Pictures/DCIM/Camera ] \
         && [ -d /mnt/rootfs/home/cpz/Videos/Camera ] \
         && echo "OK: Files/Camera content directories exist" \
