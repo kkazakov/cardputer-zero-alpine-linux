@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.20.1
+VER=0.21.0
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -670,6 +670,49 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'umask 077' /mnt/rootfs/usr/local/bin/cpz-save \
         && echo "OK: PSK-bearing archive is created 0600" \
         || echo "FAIL: save archive is world-readable (leaks Wi-Fi PSKs)"
+    # v0.21.0: /cfg card growth (cpz-grow.start) — the device-side half of
+    # the persistence story: a card written by dd/Imager/Etcher/Windows/macOS
+    # gets its CPZDATA partition from the device itself. The tooling it needs
+    # must be in the image, it must run BEFORE cpz-restore.start, and it must
+    # be the guarded version (never formats a partition it did not create).
+    [ -x /mnt/rootfs/etc/local.d/cpz-grow.start ] \
+        && echo "OK: cpz-grow.start present and executable" \
+        || echo "FAIL: cpz-grow.start missing or not executable"
+    ls /mnt/rootfs/etc/local.d/ | sort | awk '
+        /cpz-grow\.start/ {g=NR} /cpz-restore\.start/ {r=NR}
+        END {exit (g && r && g < r) ? 0 : 1}' \
+        && echo "OK: cpz-grow runs before cpz-restore in local.d order" \
+        || echo "FAIL: cpz-grow does not sort before cpz-restore"
+    # Alpine 3.24 splits these across /sbin and /usr/sbin (sfdisk, mkfs.ext4,
+    # e2fsck, blkid live in /sbin; resize2fs and dumpe2fs live in
+    # /usr/sbin). ls with two args exits 1 when either is missing, so test
+    # each path on its own.
+    for b in sfdisk mkfs.ext4 e2fsck resize2fs dumpe2fs blkid; do
+        found=0
+        for p in /mnt/rootfs/sbin/$b /mnt/rootfs/usr/sbin/$b \
+                 /mnt/rootfs/usr/bin/$b /mnt/rootfs/bin/$b; do
+            [ -e "$p" ] && found=1
+        done
+        [ "$found" = 1 ] \
+            && echo "OK: $b installed (CPZDATA growth)" \
+            || echo "FAIL: $b missing — cpz-grow.start cannot do its job"
+    done
+    grep -q '\-\-no-tell-kernel' /mnt/rootfs/etc/local.d/cpz-grow.start \
+        && echo "OK: cpz-grow does not ask the kernel to re-read a mounted disk" \
+        || echo "FAIL: cpz-grow would hit EBUSY on BLKRRPART"
+    grep -q 'cat "$FLAG"' /mnt/rootfs/etc/local.d/cpz-grow.start \
+        && echo "OK: cpz-grow only formats a partition it created" \
+        || echo "FAIL: cpz-grow could format a foreign CPZDATA partition"
+    grep -q 'save.tar.gz' /mnt/rootfs/etc/local.d/cpz-grow.start \
+        && echo "OK: cpz-grow parks the PSK snapshot before resizing" \
+        || echo "FAIL: cpz-grow resizes without a snapshot backup"
+    # the flasher shipped in the release ZIP: --no-update is not an sfdisk
+    # option and used to make the stale-p3 delete fail silently, so a reflash
+    # created an overlapping p4 entry (v0.21.0 fix). Check code only — the
+    # file documents the trap by name, so comments must not trip this.
+    sed -n '/^[^#]/p' "$REPO"/build/flash-cpz.sh | grep -q '\-\-no-update' \
+        && echo "FAIL: flash-cpz.sh still passes the non-existent --no-update" \
+        || echo "OK: flash-cpz.sh deletes the stale p3 entry for real"
     grep -q "^i2c-dev$" /mnt/rootfs/etc/modules \
         && echo "OK: i2c-dev force-loaded at boot" \
         || echo "FAIL: i2c-dev not in /etc/modules (LED fix + i2c tools dead)"

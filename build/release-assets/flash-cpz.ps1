@@ -3,8 +3,9 @@
 # Verifies the SHA-256, writes the decompressed image to a physical disk,
 # and preserves the existing CPZ-Alpine partition table (CPZDATA p3 at
 # 4 GiB) when the card already has it. A blank/foreign card gets a clean
-# install; that first flash has no CPZDATA partition (use the Linux
-# flasher once if you want /cfg persistence).
+# install: v0.21.0+ images create the CPZDATA partition themselves on the
+# first boot (one automatic reboot), so persistence arrives without a Linux
+# machine.
 $ErrorActionPreference = "Stop"
 Set-Location -LiteralPath (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
@@ -89,8 +90,8 @@ if ($preserve) {
     Write-Host "CPZ-Alpine layout found: preserving CPZDATA and the partition table." -ForegroundColor Green
 } else {
     Write-Host "No CPZ-Alpine layout found: clean install." -ForegroundColor Yellow
-    Write-Host "NOTE: a clean install has no CPZDATA partition, so /cfg persistence"
-    Write-Host "      is unavailable until you flash once with flash-cpz.sh on Linux."
+    Write-Host "NOTE: the device creates its CPZDATA partition on the first"
+    Write-Host "      boot (one automatic reboot), then /cfg persistence is available."
 }
 
 Write-Host "clearing the old partition table..."

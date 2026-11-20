@@ -3,19 +3,23 @@
 An extremely light, purpose-built **Alpine Linux** operating system for the
 **M5Stack CardputerZero** (Raspberry Pi CM0 / RP3A0, Broadcom BCM2837).
 
-**Status: v0.20.1.** The launcher face of the stock M5 image, on Alpine:
+**Status: v0.21.0.** The launcher face of the stock M5 image, on Alpine:
 the APPLaunch UI (carousel, settings, Files, Camera, calculator, CLI
 terminal) owns the internal LCD and boots straight into it. HDMI/Sway is
 opt-in and stays dark until you start it. The v0.19.0 Sway keyboard and
 HDMI-lock work is in this image; v0.20.0 added the Files browser and
-Camera as default apps (both native musl builds), and v0.20.1 fixes
-MIPI-CSI camera startup and opens Files in `/home/cpz`. Their content
-lives under `/home/cpz`, so reflashes preserve it. The device test
-checklist is in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
+Camera as default apps (both native musl builds), v0.20.1 fixes
+MIPI-CSI camera startup and opens Files in `/home/cpz`, and v0.21.0 makes
+the `CPZDATA` persistence partition cover the whole card on **every** flash
+route — `dd`, Imager and Etcher now get `/cfg` too, from the device, after
+one extra reboot on a brand-new card. Their content lives under `/home/cpz`,
+so reflashes preserve it. The device test checklist is in
+[docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
-**First public release:** [CPZ-Alpine v0.20.1](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.20.1).
+**Latest published release:** [CPZ-Alpine v0.20.1](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.20.1).
 Download the ZIP (image + SHA-256 + Linux/Windows/macOS flashers + README),
-not the loose image.
+not the loose image. v0.21.0 is built here and needs the hardware pass
+before it is published — see [docs/RELEASE-NOTES-v0.21.0.md](docs/RELEASE-NOTES-v0.21.0.md).
 
 | Subsystem | State | Notes |
 |---|---|---|
@@ -32,7 +36,7 @@ not the loose image.
 | Wi-Fi (BCM43439) | ✅ v0.19.1 | NetworkManager owns wlan0; Settings → Wi-Fi can toggle the radio, scan, join WPA2, forget, and reconnect. `nmcli` runs through `/usr/local/bin/cpz-nmcli` (root via passwordless sudo) because there is no polkit on the image. Credentials may also be baked as an NM keyfile |
 | Ethernet (SR9900A) | ✅ v0.12.2 | mainline r8152 ID patch, dwc2 host mode; field-verified DHCP + traffic |
 | SSH (dropbear) | ✅ | over Wi-Fi or Ethernet; root password is `alpine` — change it before exposing the device |
-| Persistence across reflashes | ✅ v0.20.0 | `CPZDATA` partition, hourly `cpz-save` + boot restore. Saves `/root`, `/home/cpz` (including Files content and camera media), dropbear keys, the **whole `/etc/NetworkManager` tree**, and `/var/lib/applaunch` (launcher settings + HDMI preference) |
+| Persistence across reflashes | ✅ v0.21.0 | `CPZDATA` partition covering the rest of the card, hourly `cpz-save` + boot restore. Saves `/root`, `/home/cpz` (including Files content and camera media), dropbear keys, the **whole `/etc/NetworkManager` tree**, and `/var/lib/applaunch` (launcher settings + HDMI preference). `flash-cpz.sh` provisions it offline; `dd`/Imager/Etcher get it from the device on first boot (one extra reboot) |
 | HDMI desktop (on demand) | ✅ v0.19.0 | `cpz-desktop start` → Sway + waybar + foot at 1080p60 in ~5 s, roughly 90 MiB with foot open; HDMI audio becomes default while running. Hotplug is consent-only (`/etc/cpz/hdmi-mode=ask`); a saved boot preference can still start it |
 | LCD HDMI lock | ✅ v0.19.0 | after 1 s the LCD shows **HDMI LOCKED** and the launcher stops reading the internal keypad; hold ESC 2 s to stop the desktop and unlock. The exit path is LCD-only; no monitor is needed once a session is up |
 | Bluetooth / IR | ⏳ | BT controller path verified; no user-facing IR app and no remote-test pass yet |
@@ -196,18 +200,25 @@ sudo ./build/flash-cpz.sh /dev/sdX [image.img.gz]
 ```
 
 Writes the fixed 1.8 GiB image (256 MiB FAT boot + 1.5 GiB ext4 root),
-then re-creates the **CPZDATA** partition at a fixed offset and formats it
-only if missing. On the device, hourly cron and on-demand `cpz-save`
-snapshot `/root`, `/home/cpz` (the Files home tree, `~/Pictures/DCIM/Camera`
-and `~/Videos/Camera`), dropbear keys, `/etc/wpa_supplicant`,
-`/etc/hostname`, `/etc/hosts`, the full NetworkManager config tree,
-`/var/lib/applaunch`, and additive `/etc/local.d`, `/etc/conf.d`, and
-`/etc/apk/world` into `/cfg`; every boot restores them
+then creates the **CPZDATA** partition at the fixed 4 GiB offset up to the
+end of the card, formats it only when it is missing/corrupt, and grows its
+ext4 filesystem to the partition. On the device, hourly cron and on-demand
+`cpz-save` snapshot `/root`, `/home/cpz` (the Files home tree,
+`~/Pictures/DCIM/Camera` and `~/Videos/Camera`), dropbear keys,
+`/etc/wpa_supplicant`, `/etc/hostname`, `/etc/hosts`, the full NetworkManager
+config tree, `/var/lib/applaunch`, and additive `/etc/local.d`, `/etc/conf.d`,
+and `/etc/apk/world` into `/cfg`; every boot restores them
 (`cpz-restore.start`). Run `cpz-save` after a change you care about
 — the next snapshot is not immediate.
 
-Raw `dd` also works but **drops persistence for that flash**. The image
-is fixed-size; space beyond 1.8 GiB on a larger card is currently unused.
+**`dd` / Raspberry Pi Imager / balenaEtcher also work now.** They write only
+p1/p2; on the first boot `cpz-grow.start` appends the CPZDATA entry to the
+end of the card, reboots once, and formats it — so persistence arrives
+without a desktop. One extra reboot on a brand-new card; a card that
+already has CPZDATA from a previous `flash-cpz.sh` boot is untouched.
+`/cfg` is sized to the card you flash, not to the image: a card whose
+filesystem is smaller than its partition (flashed from a smaller card)
+is grown on the next boot.
 
 ## Debugging aids shipped in the image
 

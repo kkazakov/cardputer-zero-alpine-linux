@@ -1,0 +1,194 @@
+#!/bin/sh
+# /etc/local.d/cpz-grow.start — CPZ-Alpine CPZDATA card growth (v0.21.0)
+#
+# Purpose: make /cfg (the CPZDATA ext4 partition) cover the whole card
+# without requiring a Linux desktop. flash-cpz.sh already does this
+# offline; this script does it on the device for cards written with a
+# raw dd / Raspberry Pi Imager / balenaEtcher / flash-cpz.bat /
+# flash-cpz.command, which cannot touch the partition table.
+#
+# Runs from OpenRC's `local` service. The name sorts BEFORE
+# cpz-restore.start (alphabetical), so it finishes before /cfg is
+# mounted and before the persistence archive is read.
+#
+# States (each one is a no-op when already satisfied):
+#   A. No CPZDATA partition and the card reaches past the fixed 4 GiB
+#      offset  -> append the p3 entry to the end of the card, flag it,
+#      reboot once. The reboot is unavoidable: the kernel refuses to
+#      re-read the partition table of /dev/mmcblk0 while its p2 is
+#      mounted as / (BLKRRPART -> EBUSY), so the new geometry is only
+#      visible on the next boot. The write only replaces MBR sector 0;
+#      no filesystem data is touched (p1 starts at sector 16384).
+#   B. CPZDATA exists with an ext4 filesystem smaller than the partition
+#      (card replaced, or flash-cpz.sh extended the partition) ->
+#      resize2fs. No reboot.
+#   C. CPZDATA exists, no filesystem, and WE created it last boot ->
+#      mkfs.ext4 -L CPZDATA. We never format a partition we did not
+#      create, so a foreign filesystem on p3 is left alone.
+#
+# Safety:
+#   - Only runs when the sysfs layout is the CPZ one (p1 at 16384,
+#     p2 at 540672). A USB disk or a half-written table is skipped.
+#   - Never re-reads/tells the kernel about the table (--no-reread,
+#     --no-tell-kernel): both would fail with EBUSY here, and sfdisk
+#     would then report a failure we would have to ignore.
+#   - The snapshot (/cfg/save.tar.gz, which holds the Wi-Fi PSKs) is
+#     copied to /root before the resize and put back if the resize
+#     somehow loses it.
+#   - One reboot only: if the flag from a previous append is still
+#     around and the kernel still does not show p3, we stop and say so
+#     instead of rebooting forever.
+#
+# Test hooks: DEV/P3DEV/SYS/FLAG/CFG can be overridden with CPZ_GROW_*
+# environment variables so build/test-cpz-grow.sh can drive the state
+# machine in a container. Never set them on a device.
+
+set -u
+
+DEV=${CPZ_GROW_DEV:-/dev/mmcblk0}
+P3DEV=${CPZ_GROW_P3:-/dev/mmcblk0p3}
+SYS=${CPZ_GROW_SYS:-/sys/block/mmcblk0}
+FLAG=${CPZ_GROW_FLAG:-/etc/cpz-grow.pending}
+CFG=${CPZ_GROW_CFG:-/cfg}
+# where the snapshot is parked while the filesystem is being resized
+BACKUP=${CPZ_GROW_BACKUP:-/root/.cpz-grow-backup.tar.gz}
+
+# >> (not >): each message must stay visible, and the harness reads this
+# file back. On the device /dev/console is the serial console, so every
+# line is also in /var/log/messages via logger.
+say() { printf 'cpz-grow: %s\n' "$*" >> /dev/console 2>/dev/null; logger -t cpz-grow "$*" 2>/dev/null || true; }
+
+# the fixed CPZDATA offset, and the smallest partition we consider worth
+# creating (4 MiB past the offset)
+P3START=8388608
+MINEND=$((P3START + 8192))
+
+[ -r "$SYS/size" ] || exit 0
+DISK=$(cat "$SYS/size" 2>/dev/null) || exit 0
+case "$DISK" in ''|*[!0-9]*) exit 0 ;; esac
+
+p_field() { cat "$SYS/$1" 2>/dev/null; }
+
+# --- sanity: is this the CPZ boot layout? ---
+[ "$(p_field mmcblk0p1/start)" = "16384" ] || { say "not a CPZ partition table, skipping"; exit 0; }
+[ "$(p_field mmcblk0p2/start)" = "540672" ] || { say "not a CPZ partition table, skipping"; exit 0; }
+
+if [ "$DISK" -lt "$MINEND" ]; then
+    say "card is smaller than the 4 GiB CPZDATA offset — no persistence"
+    exit 0
+fi
+
+P3S=$(p_field mmcblk0p3/start)
+P3SZ=$(p_field mmcblk0p3/size)
+if [ -n "$P3S" ] && [ -n "$P3SZ" ]; then
+    P3END=$((P3S + P3SZ))
+else
+    P3END=0
+fi
+
+# --- state A: create or extend the partition (needs one reboot) ---
+if [ "$P3END" -eq 0 ] || [ "$P3END" -lt "$DISK" ]; then
+    if [ "$P3END" -ne 0 ] && [ "$P3S" != "$P3START" ]; then
+        say "CPZDATA starts at $P3S, not $P3START — leaving it alone"
+        exit 0
+    fi
+    if [ "$P3END" -ne 0 ] && mountpoint "$CFG" >/dev/null 2>&1; then
+        say "/cfg is already mounted — not touching the partition table"
+        exit 0
+    fi
+    if [ "$P3END" -eq 0 ] && [ -f "$FLAG" ]; then
+        say "CPZDATA was appended last boot but the kernel did not see it — giving up (flash with flash-cpz.sh)"
+        rm -f "$FLAG" 2>/dev/null
+        exit 0
+    fi
+    if [ "$P3END" -eq 0 ]; then
+        say "creating CPZDATA at the 4 GiB offset, rebooting once"
+    else
+        say "extending CPZDATA to the end of the card, rebooting once"
+        # drop the old entry first, otherwise --append would add p4
+        # overlapping the existing CPZDATA
+        sfdisk --no-reread --no-tell-kernel "$DEV" --delete 3 >/dev/null 2>&1 || {
+            say "sfdisk could not delete the old CPZDATA entry"; exit 0; }
+    fi
+    echo "$P3START,," | sfdisk --no-reread --no-tell-kernel "$DEV" --append >/dev/null 2>&1 || {
+        say "sfdisk could not append CPZDATA"; exit 0; }
+    sync
+    if [ "$P3END" -eq 0 ]; then echo "append" > "$FLAG" 2>/dev/null; else echo "extend" > "$FLAG" 2>/dev/null; fi
+    reboot
+    exit 0
+fi
+
+# --- the kernel now reports CPZDATA at the end of the card ---
+# udev may still be creating the node right after a reboot
+i=0
+while [ ! -b "$P3DEV" ] && [ "$i" -lt 10 ]; do sleep 1; i=$((i + 1)); done
+if [ ! -b "$P3DEV" ]; then
+    say "CPZDATA partition is not visible as a block device"
+    exit 0
+fi
+
+FSTYPE=$(blkid -o value -s TYPE "$P3DEV" 2>/dev/null)
+
+# --- state C: a partition we created last boot, still empty ---
+if [ -z "$FSTYPE" ]; then
+    if [ "$(cat "$FLAG" 2>/dev/null)" = "append" ]; then
+        say "formatting the new CPZDATA partition"
+        mkfs.ext4 -q -L CPZDATA \
+            -E lazy_itable_init=1,lazy_journal_init=1 "$P3DEV" >/dev/null 2>&1 \
+            && say "CPZDATA formatted" || say "mkfs.ext4 failed"
+    else
+        say "CPZDATA has no filesystem — leaving it alone (flash with flash-cpz.sh)"
+    fi
+    rm -f "$FLAG" 2>/dev/null
+    exit 0
+fi
+
+# --- state B: filesystem smaller than the partition ---
+if ! command -v resize2fs >/dev/null 2>&1; then
+    say "resize2fs is missing — CPZDATA stays at its current size"
+    rm -f "$FLAG" 2>/dev/null
+    exit 0
+fi
+
+BC=$(dumpe2fs -h "$P3DEV" 2>/dev/null | awk '/^Block count:/ {print $3}')
+BS=$(dumpe2fs -h "$P3DEV" 2>/dev/null | awk '/^Block size:/ {print $3}')
+[ -n "$BC" ] && [ -n "$BS" ] || { rm -f "$FLAG" 2>/dev/null; exit 0; }
+P3BYTES=$((P3SZ * 512))
+
+if [ "$((BC * BS))" -ge "$P3BYTES" ]; then
+    rm -f "$FLAG" 2>/dev/null
+    exit 0
+fi
+
+say "growing the CPZDATA filesystem to the partition"
+
+# park the snapshot outside the filesystem we are about to resize
+mkdir -p "$CFG" 2>/dev/null
+if mount -t ext4 -o ro "$P3DEV" "$CFG" 2>/dev/null; then
+    [ -s "$CFG/save.tar.gz" ] && cp "$CFG/save.tar.gz" "$BACKUP" 2>/dev/null
+    umount "$CFG" 2>/dev/null
+fi
+
+resize2fs "$P3DEV" >/dev/null 2>&1 && say "CPZDATA resized" || {
+    say "resize2fs failed, checking the filesystem and retrying"
+    e2fsck -f -y "$P3DEV" >/dev/null 2>&1
+    resize2fs "$P3DEV" >/dev/null 2>&1 && say "CPZDATA resized (after e2fsck)" \
+        || say "CPZDATA resize FAILED"
+}
+
+# put the snapshot back if the resize somehow lost it
+if [ -f "$BACKUP" ]; then
+    if mount -t ext4 -o ro "$P3DEV" "$CFG" 2>/dev/null; then
+        if [ ! -s "$CFG/save.tar.gz" ]; then
+            umount "$CFG" 2>/dev/null
+            mount -t ext4 "$P3DEV" "$CFG" 2>/dev/null &&
+                cp "$BACKUP" "$CFG/save.tar.gz" && chmod 600 "$CFG/save.tar.gz" 2>/dev/null &&
+                say "snapshot restored after resize"
+        fi
+        umount "$CFG" 2>/dev/null
+    fi
+    rm -f "$BACKUP" 2>/dev/null
+fi
+
+rm -f "$FLAG" 2>/dev/null
+exit 0

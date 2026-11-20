@@ -33,6 +33,11 @@ APK_FLAGS="--no-cache --quiet"
 # v0.20.1: libcamera-raspberrypi supplies the RPi VC4 IPA proxy and the
 # per-sensor tuning JSON (imx219.json); without it libcamera registers no
 # camera and Camera reports "MIPI-CSI camera unavailable".
+# v0.21.0: card growth for /cfg (cpz-grow.start). sfdisk writes the CPZDATA
+# partition entry on the device; e2fsprogs gives mkfs.ext4/e2fsck and
+# e2fsprogs-extra gives resize2fs + dumpe2fs (Alpine splits them — resize2fs
+# is NOT in e2fsprogs). The image ships blkid already via a dependency, but
+# cpz-grow.start calls it directly, so it is listed explicitly.
 PKGS="openrc busybox-openrc eudev eudev-openrc eudev-libs kbd dropbear
 iw doas i2c-tools alsa-utils alsa-lib usbutils
 tzdata openssl ca-certificates mkinitfs terminus-font bluez bluez-openrc
@@ -41,7 +46,8 @@ waybar bemenu dbus dbus-openrc tilix swaybg
 freetype libinput libxkbcommon dbus-libs glib curl libstdc++ bash
 networkmanager networkmanager-openrc networkmanager-wifi networkmanager-cli
 wpa_supplicant sudo
-ffmpeg v4l-utils-libs cjson libcamera libcamera-ipa libcamera-raspberrypi"
+ffmpeg v4l-utils-libs cjson libcamera libcamera-ipa libcamera-raspberrypi
+sfdisk e2fsprogs e2fsprogs-extra blkid"
 
 # --- builder container must exist (owns the /work volume, runs 30-image) ---
 if ! docker exec "$BUILDER" true >/dev/null 2>&1; then

@@ -5,11 +5,12 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.20.1** (base repo `main`; the launcher fork is a
+Current release: **v0.21.0** (base repo `main`; the launcher fork is a
 sibling checkout in `launcher/`, branch `alpine`). v0.20.0 added Files
 and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
-startup and opens Files in `/home/cpz`, with all content persisted
-through `/cfg`.
+startup and opens Files in `/home/cpz`; v0.21.0 makes `/cfg` (CPZDATA)
+cover the whole card on every flash route, including Windows/macOS/Etcher
+ones.
 
 ---
 
@@ -99,8 +100,25 @@ sh build/30-image.sh           # partitions, FAT boot, ext4 root, verification
 
 ## Flashing + persistence
 
-Flash with `build/flash-cpz.sh` (preserves the `CPZDATA` partition).
-Raw `dd` drops persistence for that flash.
+Three ways to write a card, in order of preference:
+
+1. `build/flash-cpz.sh` (Linux) — writes p1/p2, creates CPZDATA at the fixed
+   4 GiB offset, formats it only when absent/corrupt, and grows the ext4
+   filesystem to the partition offline. Preserves `/cfg` across reflashes.
+   **The recommended path.**
+2. Raw `dd` / Raspberry Pi Imager / balenaEtcher — writes only p1/p2. The
+   device then creates CPZDATA itself on the first boot (`cpz-grow.start`:
+   append the partition entry, reboot once, format it). One extra reboot,
+   no desktop required.
+3. `flash-cpz.bat` / `flash-cpz.command` (Windows/macOS, in the release ZIP)
+   — same as 2, plus they restore the card's existing CPZ partition table
+   after the write so `/cfg` survives a reflash from Windows/macOS too.
+
+So: **every** flash route now ends up with a `/cfg` that covers the whole
+card. The card size is fixed at flash time — CPZDATA is sized to the end of
+the card, not grown later on the device — and a CPZDATA filesystem smaller
+than its partition (a card that was flashed on a smaller card) is grown on
+the next boot.
 
 What survives a reflash (see `rootfs-overlay/usr/local/bin/cpz-save` /
 `cpz-restore.start`):
@@ -191,7 +209,7 @@ complete release. The latest ZIP should also replace the loose image in
 
 ---
 
-# State (v0.20.1)
+# State (v0.21.0)
 
 ## What the image is
 
@@ -373,6 +391,37 @@ Added/fixed (all in `launcher/`):
   (Docker `-v dir:/cfg`, copy the scripts in) — grepping the save list is
   not evidence that restore works.
 
+### CPZDATA card growth (`cpz-grow.start`, v0.21.0)
+- **The kernel will not re-read the partition table of a disk whose
+  partitions are mounted** (`BLKRRPART` → EBUSY, and `sfdisk` fails the
+  same way unless you pass `--no-reread`/`--no-tell-kernel`). So the
+  device cannot write the CPZDATA entry *and* resize the filesystem in the
+  same boot: state A writes the table, sets a flag and **reboots once**;
+  the new geometry is only visible on the next boot. Do not "simplify" the
+  reboot away — it is the whole point.
+- `sfdisk --append` on a table that still has an old p3 entry **creates an
+  overlapping p4**, because append takes the next free slot. Delete p3
+  first. The v0.20.1 flasher passed `--no-update`, **which sfdisk does not
+  have**, so its `--delete 3` always failed and was hidden by `|| true`.
+  Valid flags here are `--no-reread` and `--no-tell-kernel`.
+- Never `mkfs` a partition the script did not create. The `/etc/cpz-grow.pending`
+  flag is what makes "format the empty CPZDATA we just made" safe; without
+  it a card with a foreign filesystem on p3 gets wiped.
+- `dumpe2fs -h` prints `Block count:              524288` — the number is
+  awk field **`$3`**, not `$2`. `{print $2}` returns the string `count:`,
+  the arithmetic comparison then fails and every resize silently does
+  nothing. Same trap as `-xzpkf`: it looks correct and does nothing.
+- `mkfs.ext4` at boot must be lazy (`-E lazy_itable_init=1,lazy_journal_init=1`),
+  otherwise a 32 GiB CPZDATA blocks the boot for minutes.
+- Do not test this by reading the script:
+  `docker run --privileged -v "$REPO_HOST:/repo" alpine:3.24 sh /repo/build/test-cpz-grow.sh`
+  — it fakes `/sys/block/mmcblk0` (the only way to simulate "the kernel
+  does not know p3 yet" / "p3 ends before the end of the card"), uses real
+  loop devices so `mkfs.ext4`/`resize2fs`/`blkid` really run, and stubs
+  `reboot`. Loop devices are shared with the host: always take a brand-new
+  minor (`mknod /dev/loopN b 7 N`), never reuse one, and detach your own
+  files' devices at the end.
+
 ---
 
 # App-store / .deb research (phase 2 context)
@@ -419,10 +468,11 @@ The upstream store is gone from the fork, but the apps are relevant:
 | Path | Contents |
 |---|---|
 | `build/` | Pipeline: `20-rootfs.sh`, `25-launcher.sh`, `26-apps.sh`, `30-image.sh`, `flash-cpz.sh`, `release.sh`, `push-remote.sh`, `INPUTS.md` |
+| `build/test-cpz-grow.sh` | Container simulation of `cpz-grow.start` (run with `--privileged`) |
 | `build/release-assets/` | Windows/macOS flashers packaged into each GitHub release ZIP |
 | `docs/RELEASE-README.txt`, `docs/RELEASE-NOTES-v*.md` | release ZIP readme + GitHub release description |
 | `build/boot-config/` | `cmdline.txt` (serial-only console), `config.txt` (splash off, overlays) |
-| `rootfs-overlay/etc/local.d/` | `cpz-restore.start`, `cpz-hdmi-boot.start`, `cpz-audio.start`, `cpz-wifi.start`, `cpz-leds.start`, `console.start` |
+| `rootfs-overlay/etc/local.d/` | `cpz-grow.start` (first, alphabetically), `cpz-restore.start`, `cpz-hdmi-boot.start`, `cpz-audio.start`, `cpz-wifi.start`, `cpz-leds.start`, `console.start` |
 | `rootfs-overlay/etc/udev/rules.d/` | `99-cpz-device-groups.rules` (i2c/rtc/audio/dma_heap groups) |
 | `rootfs-overlay/etc/sudoers.d/cpz` | NOPASSWD grant (forced 0440 by `rootfs-configure.sh`) |
 | `rootfs-overlay/usr/local/bin/cpz-desktop` | on-demand HDMI session (root or cpz) |

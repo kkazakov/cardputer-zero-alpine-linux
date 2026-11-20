@@ -1,14 +1,15 @@
-# FLASH AND TEST — CPZ-Alpine 0.20.1
+# FLASH AND TEST — CPZ-Alpine 0.21.0
 
 Built offline from M5's own stock image (Phase-A kernel graft). Core
 hardware support is field-verified through v0.19.0; v0.20.0 added the
-Files browser and Camera as default launcher applications, and v0.20.1
-fixes MIPI-CSI camera startup and opens Files in `/home/cpz`. Items marked
-[TEST] below still deserve one device pass.
+Files browser and Camera as default launcher applications, v0.20.1 fixes
+MIPI-CSI camera startup and opens Files in `/home/cpz`, and v0.21.0 makes
+the `CPZDATA` persistence partition cover the rest of the card on every
+flash route. Items marked [TEST] below still deserve one device pass.
 
 ## What you're flashing
 
-- `images/cpz-alpine-0.20.1.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
+- `images/cpz-alpine-0.21.0.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
   FAT32 boot (256 MiB) + ext4 root (1.5 GiB), MBR disk id `0x10c0ffee`
 - Base: Alpine Linux 3.24 aarch64, musl + BusyBox + OpenRC, **no systemd**
 - Kernel: M5 stock `6.18.33+rpt-rpi-v8` (bit-exact from the factory image,
@@ -20,29 +21,41 @@ fixes MIPI-CSI camera startup and opens Files in `/home/cpz`. Items marked
 ## Flashing
 
 The public download is the release ZIP:
-<https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.20.1>.
+<https://github.com/kkazakov/cardputer-zero-alpine-linux/releases>.
 It contains the image, checksum, README and Linux/Windows/macOS flashers.
 
 ```sh
-sha256sum -c cpz-alpine-0.20.1.img.gz.sha256     # verify download
+sha256sum -c cpz-alpine-0.21.0.img.gz.sha256     # verify download
 # /dev/sdX = the LAB microSD card (NOT the stock card, NOT a disk!)
 lsblk                                          # triple-check sizes
 sudo ./flash-cpz.sh /dev/sdX                   # preserves /cfg on reflashes
 ```
 
-`flash-cpz.sh` verifies the checksum, unmounts the card, writes the image
-and recreates/formats the CPZDATA partition. The raw `dd` command below is
-a first-install fallback only: it does **not** create or preserve `/cfg`.
+`flash-cpz.sh` verifies the checksum, unmounts the card, writes the image,
+creates the CPZDATA partition at the fixed 4 GiB offset up to the end of
+the card, formats it only when it is missing/corrupt, and grows its ext4
+filesystem to the partition. **It is the only route that keeps `/cfg`
+across a reflash.**
+
+`dd`, Raspberry Pi Imager and balenaEtcher work too — they write only the
+boot and root partitions, and the device provisions CPZDATA itself on the
+first boot. That costs **one extra reboot** on a brand-new card (the
+kernel cannot see a new partition table while the root partition is
+mounted, so the card must reboot once before the filesystem can be
+created). Nothing else is different:
 
 ```sh
-gunzip -c cpz-alpine-0.20.1.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
+gunzip -c cpz-alpine-0.21.0.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 ```
 
 Or use Raspberry Pi Imager / balenaEtcher with the `.img.gz` directly.
 
-The image is fixed-size (1.8 GiB); leftover space on a bigger card is
-unused for now (fine for testing; we'll auto-grow later).
+The image itself is fixed-size (1.8 GiB); everything after it belongs to
+CPZDATA. The size is decided by the card you flash — a card whose
+filesystem is smaller than its partition (e.g. flashed from a smaller card)
+is grown on the next boot. There is no shrinking: to move to a bigger card,
+flash the bigger card.
 
 ## What should happen on first boot
 
@@ -60,6 +73,16 @@ unused for now (fine for testing; we'll auto-grow later).
    serial0 (115200); SSH is the normal remote path.
 4. Wi-Fi joins automatically when an NM profile is baked (built from
    `build/wifi-secret`) — otherwise join from Settings → Wi-Fi.
+5. **On a card written with `dd`/Imager/Etcher**, the first boot ends with
+   an automatic reboot: `cpz-grow.start` appends the CPZDATA entry to the
+   end of the card, and the new geometry is only visible after the reboot,
+   where the filesystem is created. You see the launcher once, the device
+   reboots itself, and the second boot is the normal one. From there on it
+   never reboots by itself again. `flash-cpz.sh` cards skip all of this —
+   their `/cfg` is already there. If the device reboots over and over,
+   `/cfg` is not reachable and `cpz-grow.start` has nothing to do; it gives
+   up after one attempt and stops rebooting — check the serial console for
+   `cpz-grow:` lines.
 
 ## Test checklist (in order)
 
@@ -124,6 +147,17 @@ unused for now (fine for testing; we'll auto-grow later).
       The whole `/home/cpz` tree is pass A (archive wins) in
       `cpz-restore.start`, so Files content and camera media ride the
       same snapshot as Wi-Fi, hostname and launcher settings.
+- [ ] **T2f — `/cfg` self-provisioning (v0.21.0, needs hardware)** [TEST]:
+      write a brand-new card with `dd` (or Etcher) — **not** `flash-cpz.sh`.
+      Boot it: the device should reboot itself once, then on the second boot
+      ```sh
+      sfdisk -l /dev/mmcblk0          # p3 CPZDATA ends at the end of the card
+      df -h /cfg                      # covers the card, not 1.8 GiB
+      mount | grep /cfg               # ext4, rw
+      grep cpz-grow /var/log/messages # created CPZDATA / CPZDATA formatted
+      ```
+      Reboot twice more: it must stay silent and never reboot again. A
+      reflash with `flash-cpz.sh` afterwards must keep `/cfg/save.tar.gz`.
 - [ ] **T3 — serial rescue**: the normal image has **no USB-C serial
       gadget** (dwc2 is host-only for Ethernet/USB-A). Use the 14-pin
       expansion UART at 115200, or SSH. If the LCD is dark and you have

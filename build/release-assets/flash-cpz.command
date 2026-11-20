@@ -5,8 +5,9 @@
 # SHA-256 first. If the target card already has the CPZ-Alpine layout
 # (p1 @ 16 MiB, p2 @ 264 MiB, CPZDATA p3 @ 4 GiB), it keeps the existing
 # partition table so /cfg and the user's files survive. A blank/foreign
-# card gets a clean install; on that first flash no CPZDATA partition is
-# created (use the Linux flasher once if you want persistence).
+# card gets a clean install: v0.21.0+ images create the CPZDATA partition
+# themselves on the first boot (one automatic reboot), so persistence
+# arrives without a Linux machine.
 set -eu
 cd "$(dirname "$0")"
 
@@ -79,8 +80,8 @@ if [ "$PRESERVE" = "1" ]; then
     say "CPZ-Alpine layout found: preserving CPZDATA and the partition table."
 else
     say "No CPZ-Alpine layout found: clean install."
-    say "NOTE: a clean install has no CPZDATA partition, so /cfg persistence"
-    say "      is unavailable until you flash once with flash-cpz.sh on Linux."
+    say "NOTE: the device creates its CPZDATA partition on the first boot"
+    say "      (one automatic reboot), then /cfg persistence is available."
 fi
 
 say "writing $IMG to /dev/r$DEV ..."
