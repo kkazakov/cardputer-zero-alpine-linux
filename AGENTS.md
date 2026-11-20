@@ -103,15 +103,22 @@ What survives a reflash (see `rootfs-overlay/usr/local/bin/cpz-save` /
 `cpz-restore.start`):
 
 - pass A (user-is-king): `/root`, `/home/cpz`, dropbear hosts+keys,
-  `/etc/wpa_supplicant`, `/etc/hostname`, `/etc/hosts`, **NetworkManager
-  connections** (`/etc/NetworkManager/system-connections`, including
-  profiles created in the launcher UI), **`/var/lib/applaunch`**
+  `/etc/wpa_supplicant`, `/etc/hostname`, `/etc/hosts`, **the whole
+  NetworkManager config tree** (`/etc/NetworkManager` — connection
+  profiles incl. launcher-UI ones, plus `NetworkManager.conf`,
+  `conf.d/` and `dispatcher.d/`), **`/var/lib/applaunch`**
   (launcher config, HDMI preference)
-- pass B (additive): `/etc/local.d`, `/etc/conf.d`, `/etc/apk/world`
+- pass B (additive): `/etc/local.d`, `/etc/conf.d`, `/etc/apk/world`,
+  NetworkManager global config not shipped by the new image
 
 Only `.deb`/store-installed applications are *not* persisted (they belong
 in the image or a bundle). `cpz-save` runs hourly from cron and on demand;
 a profile/config change made after the last save is lost on reflash.
+
+v0.19.0 note: the restore was silently broken until then — see the
+Persistence trap below. "It's in the save list" is not proof it comes
+back; run the two-script simulation against a fake `/cfg` before trusting
+a persistence change.
 
 ## Copying artifacts to the desktop machine
 
@@ -277,6 +284,29 @@ Added/fixed (all in `launcher/`):
   (`cat | ssh 'cat >'`), restart the service, capture `/dev/fb1`.
 - Launcher log: `/var/log/applaunch.log` (now captures stdout+stderr,
   owned `cpz:cpz`).
+
+### Persistence (`cpz-save` / `cpz-restore.start`)
+- **Alpine's only tar is busybox, and it ABORTS the whole extraction at
+  the first error** — including `-k`'s "File exists". `tar -k` therefore
+  does *not* mean "skip this file and keep going": one image file kills
+  the run, and every later member is silently lost. That is how v0.14–
+  v0.18.3 lost restored NM profiles/config while claiming otherwise
+  (also, `-xzpkf` hides a `k` inside the cluster: pass A meant to
+  overwrite but was actually keep-old-files). Fix: extract once into an
+  empty staging dir, then merge allow-listed paths by hand; pass A
+  overwrites, pass B never clobbers an image file.
+- The archive holds Wi-Fi PSKs: it is created `0600` (umask 077). Do not
+  "simplify" that away, and never widen `/cfg`.
+- A hardcoded member list plus `tar ... || fail` means one missing
+  optional path discards the *entire* snapshot — and the hourly job sends
+  output to `/dev/null`, so persistence dies silently. Filter members to
+  what exists (v0.19.0).
+- The NM reload verb does not exist in Alpine's `/etc/init.d/networkmanager`
+  (only `depend()`), so `rc-service networkmanager reload` always failed.
+  Use `nmcli connection reload` (SIGUSR1) and only when NM is up.
+- Test a persistence change by running both scripts against a fake `/cfg`
+  (Docker `-v dir:/cfg`, copy the scripts in) — grepping the save list is
+  not evidence that restore works.
 
 ---
 
