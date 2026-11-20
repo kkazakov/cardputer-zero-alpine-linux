@@ -3,12 +3,32 @@
 # partition (/cfg). Runs hourly from cron and can be run any time
 # before pulling the card for a reflash.
 #
-# Saved: /root, /home/cpz, dropbear keys, NetworkManager profiles,
-# wpa_supplicant config (legacy), hostname/hosts, everything in
+# Saved: /root, /home/cpz, dropbear keys, the whole NetworkManager config
+# tree, wpa_supplicant config (legacy), hostname/hosts, everything in
 # /etc/local.d and /etc/conf.d, the launcher's state
 # (/var/lib/applaunch), the apk world file, plus the installed-package
 # list (/cfg/pkglist.txt — re-installed automatically at the next boot
 # after a reflash).
+#
+# v0.19.0 NetworkManager: the whole /etc/NetworkManager tree is saved, not
+# just system-connections. The keyfiles (PSK-bearing, written by the
+# launcher's Settings UI or nmcli) are the user's Wi-Fi/Ethernet
+# credentials, and NetworkManager.conf / conf.d/ / dispatcher.d/ carry
+# global settings and hooks that nmcli cannot express (MAC policy, DNS
+# backend, per-link scripts). Before this only the profile directory
+# survived, so a global NM change silently died at the next reflash.
+#
+# v0.19.0 robustness: the member list was hardcoded and any missing path
+# made busybox tar exit non-zero, which discarded the entire snapshot —
+# and because the hourly job redirects to /dev/null, persistence just
+# quietly stopped at the last good archive (found when /etc/wpa_supplicant
+# was gone after the v0.17 NetworkManager switch). Absent optional paths
+# are now skipped, and a non-zero tar exit is treated as a warning when
+# the archive still validates ("file changed as we read it" is normal for
+# a live /root).
+#
+# The archive holds Wi-Fi PSKs, so it is created 0600 (umask 077); /cfg
+# is readable by the cpz user and an 0644 tarball leaked every key.
 
 CFG=/cfg
 
@@ -22,14 +42,34 @@ mountpoint $CFG >/dev/null 2>&1 ||
       exit 1; }
 
 T=$CFG/save.tar.gz.new
-tar -czpf $T -C / \
-    root home/cpz \
-    etc/dropbear etc/wpa_supplicant etc/hostname etc/hosts \
-    etc/local.d etc/conf.d etc/apk/world \
-    etc/NetworkManager/system-connections \
-    var/lib/applaunch \
-    2>/dev/null || { rm -f $T; echo "cpz-save: tar failed" >&2; exit 1; }
-mv $T $CFG/save.tar.gz
+rm -f "$T"
+
+# Only archive what exists: a reflashed image may have dropped an old path
+# (v0.17 removed the wpa_supplicant boot path) and one missing member must
+# not cost the user every other saved setting. /etc/NetworkManager stays
+# first-class even when empty — the directory entry lets the restore
+# recreate it 0700 if an image ever stops shipping it.
+set --
+for p in root home/cpz \
+         etc/dropbear etc/wpa_supplicant etc/hostname etc/hosts \
+         etc/local.d etc/conf.d etc/apk/world \
+         etc/NetworkManager \
+         var/lib/applaunch; do
+    [ -e "/$p" ] && set -- "$@" "$p"
+done
+[ $# -gt 0 ] || { echo "cpz-save: no save paths present" >&2; exit 1; }
+
+umask 077
+if ! tar -czpf "$T" -C / "$@" 2>/dev/null; then
+    # busybox tar exits non-zero both for "file changed as we read it"
+    # (archive is fine) and for real write failures. Validate instead of
+    # throwing away a usable snapshot.
+    tar -tzf "$T" >/dev/null 2>&1 ||
+        { rm -f "$T"; echo "cpz-save: tar failed" >&2; exit 1; }
+    echo "cpz-save: warning: files changed while reading; archive validated" >&2
+fi
+chmod 600 "$T"
+mv "$T" $CFG/save.tar.gz
 
 apk info -q > $CFG/pkglist.txt 2>/dev/null
 sync

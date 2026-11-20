@@ -11,14 +11,39 @@
 #   pass A, archive WINS: user-owned config (/root, /home/cpz, dropbear
 #     keys, NM connection profiles, wpa conf, hostname/hosts, launcher
 #     settings) — the user's data is authoritative
-#   pass B, image WINS: /etc/local.d, /etc/conf.d, /etc/apk — restored
-#     only where the new image does not ship its own file (-k), so new
-#     build versions are never overwritten, but user-added scripts and
-#     the apk world list still come back.
+#   pass B, image WINS: /etc/local.d, /etc/conf.d, /etc/apk, and the
+#     global NetworkManager config (NetworkManager.conf, conf.d,
+#     dispatcher.d) — merged in only where the new image does not ship its
+#     own file, so new build versions are never overwritten, but
+#     user-added scripts/keys and the apk world list still come back.
 #
 # NetworkManager profiles (/etc/NetworkManager/system-connections)
 # carry Wi-Fi credentials joined through the launcher's Settings UI;
 # restoring them user-is-king keeps networks across reflashes.
+#
+# v0.19.0 history (this file had three compounding bugs; all field-visible
+# as "my Wi-Fi came back on the old network" / "my NM config vanished"):
+#   1. pass A was flagged -xzpkf. The k hides inside the cluster and is
+#      --keep-old-files, so every file the new image already shipped was
+#      kept and the archived copy skipped. The "archive wins" promise was
+#      false: an on-device hostname/hosts/NM keyfile edit never came back,
+#      and an archived profile whose filename collided with a baked one
+#      (cpz-wifi.nmconnection) was dropped, leaving stale build PSKs.
+#   2. busybox tar ABORTS the whole extraction at the first file it cannot
+#      replace (a busy or immutable /etc/hostname is enough), silently
+#      dropping every later member — including the NM profiles.
+#   3. pass B used tar -k as well, and the first existing file in
+#      /etc/local.d killed the run, so user-added scripts, conf.d keys and
+#      dispatcher hooks were never restored either.
+# The fix is to extract once into an empty staging dir (no conflicts are
+# possible there, so the extraction cannot abort) and then merge each
+# allow-listed path explicitly — pass A overwrites, pass B does not.
+# Nothing outside the two lists is ever copied back, so a stale or hostile
+# archive cannot drop files into the running rootfs.
+#
+# v0.19.0: the global NM config used to be left out entirely, so a
+# NetworkManager.conf / conf.d / dispatcher.d tweak was lost at the next
+# reflash even though the profiles themselves came back.
 
 CFG=/cfg
 A=$CFG/save.tar.gz
@@ -34,11 +59,29 @@ mountpoint $CFG >/dev/null 2>&1 || exit 0
 tar -tzf "$A" >/dev/null 2>&1 ||
     { echo "cpz-restore: archive unreadable, skipping" >&2; exit 0; }
 
-# pass A — user-is-king
-tar -xzpkf "$A" -C / \
-    root home/cpz etc/dropbear etc/wpa_supplicant etc/hostname etc/hosts \
-    etc/NetworkManager/system-connections var/lib/applaunch \
-    2>/dev/null
+PASS_A="root home/cpz etc/dropbear etc/wpa_supplicant etc/hostname \
+etc/hosts etc/NetworkManager/system-connections var/lib/applaunch"
+PASS_B="etc/local.d etc/conf.d etc/apk/world \
+etc/NetworkManager/NetworkManager.conf \
+etc/NetworkManager/conf.d etc/NetworkManager/dispatcher.d"
+
+STAGE=$(mktemp -d /tmp/cpz-restore.XXXXXX 2>/dev/null) || STAGE=
+if [ -z "$STAGE" ]; then
+    echo "cpz-restore: no temp space, persistence skipped" >&2
+    exit 0
+fi
+tar -xzpf "$A" -C "$STAGE" 2>/dev/null || true
+
+# pass A — archive wins (overwrite without asking)
+for p in $PASS_A; do
+    [ -e "$STAGE/$p" ] || continue
+    if [ -d "$STAGE/$p" ]; then
+        mkdir -p "/$p" 2>/dev/null
+        cp -a "$STAGE/$p/." "/$p/" 2>/dev/null || true
+    else
+        cp -p "$STAGE/$p" "/$p" 2>/dev/null || true
+    fi
+done
 
 # restored NM profiles are root-only (they contain PSKs)
 chmod -R go-rwx /etc/NetworkManager/system-connections 2>/dev/null
@@ -49,17 +92,42 @@ chmod -R go-rwx /etc/NetworkManager/system-connections 2>/dev/null
 # persist its state (silent Off after a reflash). Restore cpz ownership.
 chown -R cpz:cpz /var/lib/applaunch 2>/dev/null
 
-# pass B — additive (never overwrite a file the new image ships)
-tar -xzpkf "$A" -k -C / \
-    etc/local.d etc/conf.d etc/apk/world \
-    2>/dev/null
+# pass B — image wins: create only paths the new image does not ship
+for p in $PASS_B; do
+    [ -e "$STAGE/$p" ] || continue
+    (
+        cd "$STAGE" || exit 0
+        find "./$p" -type d -exec \
+            sh -c 'mkdir -p "/${1#./}"' sh {} \; 2>/dev/null
+        find "./$p" -type f -exec \
+            sh -c 'd="/${1#./}"; [ -e "$d" ] || cp -p "$1" "$d"' sh {} \; 2>/dev/null
+        find "./$p" -type l -exec \
+            sh -c 'd="/${1#./}"; [ -e "$d" ] || ln -s "$(readlink "$1")" "$d"' sh {} \; 2>/dev/null
+    )
+done
+
+rm -rf "$STAGE"
 
 # dropbear host keys / authorized_keys may have just changed — restart
 # it so the running daemon matches the restored files
 rc-service dropbear restart >/dev/null 2>&1
 
-# same for NetworkManager: re-read restored connection profiles
-rc-service networkmanager reload >/dev/null 2>&1 ||
-    rc-service networkmanager restart >/dev/null 2>&1
+# same for NetworkManager: re-read restored connection profiles.
+# v0.19.0: Alpine's /etc/init.d/networkmanager defines only depend() — it
+# has no reload() function, so the old `rc-service networkmanager reload`
+# always failed and the fallback tore the daemon down on every boot.
+# `nmcli connection reload` is the supported way to make NM re-read every
+# keyfile on disk (SIGUSR1) without dropping connections. Only poke NM if
+# it is actually up: when it starts later it reads the restored files
+# itself, and forcing a restart at that point just races dbus.
+if nmcli -t general status >/dev/null 2>&1; then
+    nmcli connection reload >/dev/null 2>&1 ||
+        rc-service networkmanager restart >/dev/null 2>&1
+fi
+
+NMPROF=$(ls /etc/NetworkManager/system-connections 2>/dev/null | wc -l)
+logger -t cpz-restore \
+    "restored snapshot: $NMPROF NetworkManager profile(s) available" \
+    2>/dev/null || true
 
 exit 0

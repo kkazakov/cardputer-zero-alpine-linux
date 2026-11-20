@@ -541,6 +541,27 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q "run-parts" /mnt/rootfs/etc/crontabs/root \
         && echo "OK: crond periodic table configured" \
         || echo "FAIL: /etc/crontabs/root missing (crond idle, no snapshots)"
+    # v0.19.0: NetworkManager config must ride the persistence layer, and
+    # the restore must actually overwrite user files. The old restore used
+    # -xzpkf ("k" = keep-old-files) on pass A and tar -k on pass B, so
+    # busybox tar aborted at the first image file it met and neither the
+    # NM profiles nor any conf.d/dispatcher.d key ever came back.
+    grep -q 'etc/NetworkManager' /mnt/rootfs/usr/local/bin/cpz-save \
+        && echo "OK: whole NM config tree captured by cpz-save" \
+        || echo "FAIL: cpz-save does not save /etc/NetworkManager"
+    grep -q 'etc/NetworkManager/system-connections' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && grep -q 'etc/NetworkManager/conf.d' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && echo "OK: NM profiles + global config restored at boot" \
+        || echo "FAIL: NM config missing from cpz-restore"
+    grep -q 'tar -xzpkf' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && echo "FAIL: restore still passes -k (keep-old-files) — archive is ignored" \
+        || echo "OK: restore overwrites with the archived user data"
+    grep -q 'nmcli connection reload' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && echo "OK: restored NM profiles are re-read via nmcli" \
+        || echo "FAIL: NM never re-reads the restored profiles"
+    grep -q 'umask 077' /mnt/rootfs/usr/local/bin/cpz-save \
+        && echo "OK: PSK-bearing archive is created 0600" \
+        || echo "FAIL: save archive is world-readable (leaks Wi-Fi PSKs)"
     grep -q "^i2c-dev$" /mnt/rootfs/etc/modules \
         && echo "OK: i2c-dev force-loaded at boot" \
         || echo "FAIL: i2c-dev not in /etc/modules (LED fix + i2c tools dead)"
