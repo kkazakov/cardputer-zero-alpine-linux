@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.19.0
+VER=0.19.1
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -329,6 +329,13 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     # main package. Without them nmcli is absent and NM marks wlan0
     # unmanaged ("device type unmanaged by default") — the launcher's
     # Wi-Fi toggle then does nothing.
+    # v0.19.1: NetworkManager has no polkit on Alpine; cpz gets "Not authorized".
+    # Every launcher nmcli call goes through this passwordless-sudo wrapper.
+    [ -x /mnt/rootfs/usr/local/bin/cpz-nmcli ] \
+        && grep -aq '/usr/local/bin/cpz-nmcli' /mnt/rootfs/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch \
+        && echo "OK: launcher nmcli goes through cpz-nmcli (root; NM auth)" \
+        || echo "FAIL: cpz-nmcli wrapper missing or launcher still calls nmcli directly"
+
     [ -x /mnt/rootfs/usr/bin/nmcli ] \
         && echo "OK: nmcli (NetworkManager CLI) installed" \
         || echo "FAIL: nmcli missing — Wi-Fi/Ethernet settings dead"

@@ -5,7 +5,7 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.18.3** (base repo `main`; the launcher fork is a
+Current release: **v0.19.1** (base repo `main`; the launcher fork is a
 sibling checkout in `launcher/`, branch `alpine`).
 
 ---

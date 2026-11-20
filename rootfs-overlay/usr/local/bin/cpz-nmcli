@@ -1,0 +1,9 @@
+#!/bin/sh
+# NetworkManager operations from the launcher (user cpz).
+#
+# Alpine ships NetworkManager without polkit; nmcli as cpz fails with
+# "Not authorized to perform this operation" / "Not authorized to control
+# networking." for radio, scan-connect, profile and disconnect calls. cpz
+# already has passwordless sudo, so run nmcli as root. The launcher uses
+# this path for every nmcli invocation (Wi-Fi and Ethernet settings).
+exec /usr/bin/sudo -n /usr/bin/nmcli "$@"

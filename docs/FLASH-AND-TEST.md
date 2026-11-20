@@ -1,12 +1,13 @@
-# FLASH AND TEST — CPZ-Alpine 0.19.0
+# FLASH AND TEST — CPZ-Alpine 0.19.1
 
-Built offline from M5's own stock image (Phase-A kernel graft). Versions
-through v0.16 are **hardware-verified** per the README table; items marked
-[TEST] below are new in this image and need one device pass.
+Built offline from M5's own stock image (Phase-A kernel graft). Core
+hardware support is field-verified through v0.19.0; v0.19.1 is the Wi-Fi
+Settings authorization fix. Items marked [TEST] below still deserve one
+device pass.
 
 ## What you're flashing
 
-- `images/cpz-alpine-0.19.0.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
+- `images/cpz-alpine-0.19.1.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
   FAT32 boot (256 MiB) + ext4 root (1.5 GiB), MBR disk id `0x10c0ffee`
 - Base: Alpine Linux 3.24 aarch64, musl + BusyBox + OpenRC, **no systemd**
 - Kernel: M5 stock `6.18.33+rpt-rpi-v8` (bit-exact from the factory image,
@@ -18,10 +19,10 @@ through v0.16 are **hardware-verified** per the README table; items marked
 ## Flashing
 
 ```sh
-sha256sum -c cpz-alpine-0.19.0.img.gz.sha256     # verify download
+sha256sum -c cpz-alpine-0.19.1.img.gz.sha256     # verify download
 # /dev/sdX = the LAB microSD card (NOT the stock card, NOT a disk!)
 lsblk                                          # triple-check sizes
-gunzip -c cpz-alpine-0.19.0.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
+gunzip -c cpz-alpine-0.19.1.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 ```
 
@@ -89,13 +90,13 @@ unused for now (fine for testing; we'll auto-grow later).
       it across a reboot. The System menu shows Storage / Licenses /
       Reboot but NO Software-updater page, and no Developer/ADB section —
       those are RPi-OS-only and hidden on Alpine.
-- [ ] **T3 — serial rescue, no adapter needed**: if the LCD is ever dark,
-      use the USB-C port as a serial gadget. Apply
-      `build/offline-fix/fix-card.sh` to the flashed card from the desktop
-      (auto-detects the `CPZBOOT` partition): it adds `dwc2,dr_mode=peripheral`
-      + the `g_serial` gadget, then the USB-C cable to the desktop shows
-      `/dev/ttyACM0` — `screen /dev/ttyACM0 115200`. For a *working* v0.5
-      boot this is not needed at all.
+- [ ] **T3 — serial rescue**: the normal image has **no USB-C serial
+      gadget** (dwc2 is host-only for Ethernet/USB-A). Use the 14-pin
+      expansion UART at 115200, or SSH. If the LCD is dark and you have
+      no UART adapter, the legacy `build/offline-fix/fix-card.sh` can
+      temporarily patch the card to `dwc2,dr_mode=peripheral` + `g_serial`
+      and expose `/dev/ttyACM0` at 115200 — treat that as an emergency
+      recovery path, not a normal feature.
 - [ ] **T4 — USB host**: plug a USB flash drive into the USB-A port →
       `dmesg | tail` shows usb-storage; plug a USB keyboard → types.
 - [ ] **T5 — Ethernet**: cable in → `ip a` shows eth0 with a DHCP lease;
@@ -108,6 +109,12 @@ unused for now (fine for testing; we'll auto-grow later).
 - [ ] **T7 — Wi-Fi chips present**: `ip a` shows wlan0 (unconfigured —
       see below to join a network). `iw dev wlan0 scan | grep SSID` should
       list networks.
+- [ ] **T7b — Wi-Fi Settings (v0.19.1)**: Settings → Wi-Fi → Enable
+      really toggles the radio (no flash-and-revert), and Networks joins a
+      WPA2 AP. The launcher runs `nmcli` through the passwordless
+      `/usr/local/bin/cpz-nmcli` sudo wrapper because Alpine's
+      NetworkManager has no polkit; direct `nmcli` as cpz fails with
+      "Not authorized to perform this operation".
 - [ ] **T8 — battery**: `cat /sys/class/power_supply/bq27220-0/capacity`
       now reports a real percentage (v0.5 rebuilt the gauge driver with
       true BQ27220 support). `power_now` / `voltage_now` should read sane
@@ -118,10 +125,11 @@ unused for now (fine for testing; we'll auto-grow later).
 - [ ] **T9 — audio**: `speaker-test -c2 -twav` (ES8389 speaker path) and
       `alsamixer` (F6 to pick the es8389 card).
 - [ ] **T10 — HDMI desktop (on demand)** [TEST]: plug into a monitor.
-      Nothing starts by itself (hotplug prints an "ask" notice on the
-      LCD). Run `cpz-desktop start`: sway + waybar + foot come up in ~5 s,
-      ~90 MiB resident. The internal LCD console is untouched throughout
-      (fbtft is not a KMS output).
+      Nothing starts by itself (`/etc/cpz/hdmi-mode=ask`; start it from
+      the HDMI card). Run `cpz-desktop start`: sway + waybar + foot come
+      up in ~5 s, ~90 MiB resident. The internal LCD is not a Sway output
+      (fbtft is not KMS); it shows **HDMI LOCKED** while the session runs,
+      as described below.
       **Internal keypad in sway (v0.19.0):** Alt is scoped to Super for
       the internal device only, so the stock bindings work:
       Alt+Enter terminal, Alt+d launcher, Alt+Shift+E stop.
