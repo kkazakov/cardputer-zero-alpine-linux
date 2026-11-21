@@ -23,6 +23,27 @@ Download the ZIP (image + SHA-256 + Linux/Windows/macOS flashers + README),
 not the loose image. v0.21.2 is built here and needs the hardware pass
 before it is published — see [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
+## Screenshots
+
+The internal 320×170 ST7789 panel, captured from `/dev/fb1` (shown here at
+3×; the HDMI output is separate and only exists while a desktop session
+runs).
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="docs/screenshots/lockscreen.png" width="300" alt="Lock screen with the Alpine wallpaper"><br><sub><b>Lock screen</b> — Alpine wallpaper; TAB arms, ENTER unlocks</sub></td>
+    <td align="center" width="50%"><img src="docs/screenshots/launcher-hdmi.png" width="300" alt="HDMI card selected in the home carousel"><br><sub><b>Launcher</b> — HDMI card selected</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/hdmi-app.png" width="300" alt="HDMI app page with the desktop switch off"><br><sub><b>HDMI app</b> — desktop on demand, off by default</sub></td>
+    <td align="center"><img src="docs/screenshots/launcher-tailscale.png" width="300" alt="Tailscale card selected in the home carousel"><br><sub><b>Launcher</b> — Tailscale card, only when installed and logged in</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/tailscale-app.png" width="300" alt="Tailscale app page with the tunnel up"><br><sub><b>Tailscale app</b> — tunnel up; the choice survives a reboot</sub></td>
+    <td align="center"></td>
+  </tr>
+</table>
+
 | Subsystem | State | Notes |
 |---|---|---|
 | **Launcher UI (APPLaunch)** | ✅ v0.20.1 | upstream M5 carousel on the 320×170 LCD, built as a musl aarch64 binary (`build/25-launcher.sh`), OpenRC `applaunch` service running as user `cpz` |
@@ -38,8 +59,9 @@ before it is published — see [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 | Wi-Fi (BCM43439) | ✅ v0.19.1 | NetworkManager owns wlan0; Settings → Wi-Fi can toggle the radio, scan, join WPA2, forget, and reconnect. `nmcli` runs through `/usr/local/bin/cpz-nmcli` (root via passwordless sudo) because there is no polkit on the image. Credentials may also be baked as an NM keyfile |
 | Ethernet (SR9900A) | ✅ v0.12.2 | mainline r8152 ID patch, dwc2 host mode; field-verified DHCP + traffic |
 | SSH (dropbear) | ✅ | over Wi-Fi or Ethernet; root password is `alpine` — change it before exposing the device |
-| Persistence across reflashes | ✅ v0.21.0 | `CPZDATA` partition covering the rest of the card, hourly `cpz-save` + boot restore. Saves `/root`, `/home/cpz` (including Files content and camera media), dropbear keys, the **whole `/etc/NetworkManager` tree**, and `/var/lib/applaunch` (launcher settings + HDMI preference). `flash-cpz.sh` provisions it offline; `dd`/Imager/Etcher get it from the device on first boot (one extra reboot) |
+| Persistence across reflashes | ✅ v0.21.3 | `CPZDATA` partition covering the rest of the card, hourly `cpz-save` + boot restore. Saves `/root`, `/home/cpz` (including Files content and camera media), dropbear keys, the **whole `/etc/NetworkManager` tree**, `/var/lib/applaunch` (launcher settings + HDMI/Tailscale preferences), and `/var/lib/tailscale` (optional Tailscale node key, so a reflash does not require re-login). `flash-cpz.sh` provisions it offline; `dd`/Imager/Etcher get it from the device on first boot (one extra reboot) |
 | HDMI desktop (on demand) | ✅ v0.19.0 | `cpz-desktop start` → Sway + waybar + foot at 1080p60 in ~5 s, roughly 90 MiB with foot open; HDMI audio becomes default while running. Hotplug is consent-only (`/etc/cpz/hdmi-mode=ask`); a saved boot preference can still start it |
+| Tailscale (on demand) | ✅ v0.21.3 | **optional** on-device package (`apk add tailscale tailscale-openrc` + `tailscale up`); the launcher card appears only once the node is installed **and** logged in, and switches the tunnel on/off. The choice survives a reboot (ON re-adds the runlevel service, OFF removes it) and the node key survives a reflash |
 | LCD HDMI lock | ✅ v0.19.0 | after 1 s the LCD shows **HDMI LOCKED** and the launcher stops reading the internal keypad; hold ESC 2 s to stop the desktop and unlock. The exit path is LCD-only; no monitor is needed once a session is up |
 | Bluetooth / IR | ⏳ | BT controller path verified; no user-facing IR app and no remote-test pass yet |
 
@@ -141,6 +163,120 @@ An external USB keyboard is a first-class Sway keyboard: real Super/Alt,
 US layout, normal Sway bindings. It is not routed through the internal
 keypad remap. The LCD lock still applies while a session is running; use
 the LCD's ESC hold or `Mod+Shift+E` to stop the session.
+
+## Tailscale (optional, on demand)
+
+Tailscale is **not installed in the image**. The launcher ships the
+**Tailscale** card and the `/usr/local/bin/cpz-tailscale` helper, but the
+card stays hidden until the package is installed *and* the node has been
+logged in. Nothing else on the image depends on it.
+
+### 1. Install and enable the daemon
+
+Over SSH (root; `cpz` can prefix everything with `sudo -n`):
+
+```sh
+apk add tailscale tailscale-openrc
+rc-update add tailscale default      # start it at boot
+rc-service tailscale start
+```
+
+`tailscale-openrc` provides `/etc/init.d/tailscale` — the service is named
+**`tailscale`**, not `tailscaled` (that is only the daemon process name).
+`apk add` also adds the package to `/etc/apk/world`, so the existing
+`cpz-save` / reflash flow reinstalls it automatically after a reflash
+(`/cfg/pkglist.txt`).
+
+### 2. Log in (`tailscale up`)
+
+```sh
+tailscale up
+```
+
+It prints an authentication URL. Open that URL on a phone or desktop,
+approve the device, and the command returns. Useful variants:
+
+```sh
+tailscale up --hostname=cardputer-zero   # nicer name in the admin console
+tailscale up --ssh                       # Tailscale SSH instead of dropbear
+tailscale up --accept-routes             # use subnet routes from the tailnet
+tailscale up --advertise-exit-node       # offer this device as an exit node
+```
+
+Check the result:
+
+```sh
+tailscale status        # "cardputer-zero-alpine  kkazakov@  linux  -"
+tailscale ip -4         # 100.x.y.z
+```
+
+### 3. Use the launcher card
+
+Within ~20 s of the login completing (no launcher restart needed) the
+**Tailscale** card appears in the home carousel, next to HDMI. Open it:
+
+- **ENTER** flips the tunnel on/off; **ESC** returns home.
+- The switch reflects the real daemon (`pidof tailscaled`), and the note
+  line says whether the state will survive a reboot.
+- **ON** adds `tailscale` to the default runlevel and starts it.
+- **OFF** removes the runlevel link *first*, then stops the daemon. This
+  is what makes OFF persist: OpenRC starts default-runlevel services
+  before `/etc/local.d`, so a boot hook alone would reconnect briefly on
+  every boot.
+
+The preference lives in `/var/lib/applaunch/tailscale` (`1`/`0`) and is
+re-applied at boot by `/etc/local.d/cpz-tailscale-boot.start`.
+
+**Remote-access warning:** on a device reachable only through its tailnet
+address, switching OFF drops your SSH session and the device disappears
+from the tailnet. Use the serial console (14-pin UART, 115200) or the LAN
+address if you need to turn it back on, or schedule a re-enable before
+testing remotely:
+
+```sh
+nohup sh -c 'sleep 120; /usr/local/bin/cpz-tailscale apply on' &
+```
+
+### 4. Manual control (no launcher)
+
+```sh
+cpz-tailscale state          # on | off
+cpz-tailscale on             # write preference 1 + start + enable at boot
+cpz-tailscale off            # write preference 0 + stop + disable at boot
+cpz-tailscale apply on       # start/enable now, leave the preference alone
+cpz-tailscale apply off      # stop/disable now, leave the preference alone
+cpz-tailscale available      # exit 0 only if installed AND logged in
+cpz-tailscale boot           # re-apply the saved preference (boot hook)
+```
+
+`cpz-tailscale on|off` and the launcher page keep the same preference
+file, so mixing them is safe.
+
+### 5. Persistence across reflashes
+
+`/var/lib/tailscale` (node key, login profile, prefs) is in `cpz-save`, so
+a card reflash keeps the node logged in — no second `tailscale up`. The
+package is reinstalled from `/etc/apk/world` + `/cfg/pkglist.txt` on the
+first boot, and the boot hook starts the daemon once the binary exists.
+
+Run `cpz-save` after changing anything Tailscale-related (the hourly job
+also does it):
+
+```sh
+cpz-save
+tar -tzf /cfg/save.tar.gz | grep var/lib/tailscale/tailscaled.state
+```
+
+The archive is `0600` because it carries the node key and Wi-Fi PSKs.
+
+### Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Card never appears | `cpz-tailscale available; echo $?` → must be `0`. It is `1` until both `/usr/sbin/tailscaled` + `/etc/init.d/tailscale` exist **and** `tailscaled.state` has a non-empty `_profiles` (`tailscale up` completed) |
+| `rc-service tailscaled` says "does not exist" | Wrong name — the service is `tailscale` |
+| Switch flips back immediately | `tail -f /var/log/tailscaled.log`; `rc-service tailscale status`; the launcher log is `/var/log/applaunch.log` |
+| Card appears but is Off after reflash | `cpz-save` must have run **before** the reflash; check the archive for `var/lib/tailscale/tailscaled.state` |
 
 ## Wi-Fi and Ethernet
 
