@@ -43,6 +43,14 @@
 # cpz-restore.start merges exactly those two entries and leaves every other
 # account from the new image untouched.
 #
+# v0.21.3: /var/lib/tailscale (node key, login profiles, prefs) is saved so
+# an optional Tailscale install comes back already logged in after a
+# reflash. The package itself is not in the image — /etc/apk/world in pass
+# B plus /cfg/pkglist.txt reinstalls it at boot — but without this member
+# the node would have to be re-authenticated every time. Like the rest of
+# the archive it carries secrets (the node key), so it must stay inside
+# the 0600 tarball.
+#
 # The archive holds Wi-Fi PSKs, so it is created 0600 (umask 077); /cfg
 # is readable by the cpz user and an 0644 tarball leaked every key.
 # /cfg/shadow-users holds password hashes: 0600 is an on-device permission,
@@ -72,7 +80,7 @@ for p in root home/cpz \
          etc/dropbear etc/wpa_supplicant etc/hostname etc/hosts \
          etc/local.d etc/conf.d etc/apk/world \
          etc/NetworkManager \
-         var/lib/applaunch; do
+         var/lib/applaunch var/lib/tailscale; do
     [ -e "/$p" ] && set -- "$@" "$p"
 done
 [ $# -gt 0 ] || { echo "cpz-save: no save paths present" >&2; exit 1; }

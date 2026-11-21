@@ -1,0 +1,19 @@
+#!/bin/sh
+# /etc/local.d/cpz-tailscale-boot.start — re-apply the Tailscale on/off
+# preference saved by the launcher's Tailscale page.
+#
+# Runs as root in the `local` service, after cpz-restore.start (alphabetical
+# order: cpz-restore < cpz-tailscale-boot), so /var/lib/applaunch/tailscale
+# is already back from /cfg. The helper does the waiting itself when the
+# optional package is still being reinstalled from /cfg/pkglist.txt by
+# cpz-wifi.start, so this hook must not block the boot.
+#
+# History: the obvious "rc-service tailscale start" in a local.d hook is
+# not enough to make OFF persist — OpenRC starts every service in the
+# default runlevel before local.d runs, so an enabled tailscaled would
+# connect for the first seconds of every boot and only then be stopped.
+# cpz-tailscale solves that by removing/adding the runlevel link.
+
+[ -x /usr/local/bin/cpz-tailscale ] || exit 0
+/usr/local/bin/cpz-tailscale boot
+exit 0

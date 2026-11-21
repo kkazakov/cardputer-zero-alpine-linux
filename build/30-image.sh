@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.2
+VER=0.21.3
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -325,6 +325,25 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -x /mnt/rootfs/usr/local/bin/cpz-desktop ] \
         && echo "OK: cpz-desktop launcher present" \
         || echo "FAIL: cpz-desktop missing"
+    # v0.21.3: optional Tailscale app. The daemon/package is NOT in the
+    # image (it is an on-device apk install), so only the launcher-side
+    # plumbing can be checked here: the root helper, the boot hook and the
+    # persistence members that keep the node logged in across a reflash.
+    [ -x /mnt/rootfs/usr/local/bin/cpz-tailscale ] \
+        && echo "OK: cpz-tailscale helper present" \
+        || echo "FAIL: cpz-tailscale missing — Tailscale app cannot toggle"
+    [ -x /mnt/rootfs/etc/local.d/cpz-tailscale-boot.start ] \
+        && echo "OK: Tailscale boot hook present" \
+        || echo "FAIL: cpz-tailscale-boot.start missing — ON/OFF not re-applied"
+    grep -q 'var/lib/tailscale' /mnt/rootfs/usr/local/bin/cpz-save \
+        && echo "OK: Tailscale node state saved to /cfg" \
+        || echo "FAIL: cpz-save does not archive /var/lib/tailscale"
+    grep -q 'var/lib/tailscale' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && echo "OK: Tailscale node state restored from /cfg" \
+        || echo "FAIL: cpz-restore does not merge /var/lib/tailscale"
+    [ -s /mnt/rootfs/usr/share/APPLaunch/share/images/tailscale_100.png ] \
+        && echo "OK: Tailscale app icon installed" \
+        || echo "FAIL: tailscale_100.png missing from the launcher resources"
     # v0.17.2 field fixes: Alpine splits NM's wifi support + CLI out of the
     # main package. Without them nmcli is absent and NM marks wlan0
     # unmanaged ("device type unmanaged by default") — the launcher's

@@ -10,7 +10,7 @@
 # build files into new images):
 #   pass A, archive WINS: user-owned config (/root, /home/cpz, dropbear
 #     keys, NM connection profiles, wpa conf, hostname/hosts, launcher
-#     settings) — the user's data is authoritative
+#     settings, Tailscale node state) — the user's data is authoritative
 #   pass B, image WINS: /etc/local.d, /etc/conf.d, /etc/apk, and the
 #     global NetworkManager config (NetworkManager.conf, conf.d,
 #     dispatcher.d) — merged in only where the new image does not ship its
@@ -56,6 +56,12 @@
 # This is a name-keyed merge after pass A/B, not a whole-file restore:
 # users the new image ships (or drops) stay under the image's control,
 # and a malformed/absent file leaves the image's passwords in place.
+#
+# v0.21.3: /var/lib/tailscale comes back through pass A so an optional
+# Tailscale node stays logged in across a reflash. The package is not in
+# the image (cpz-wifi.start reinstalls /cfg/pkglist.txt in the background),
+# so ownership is forced root-only here and re-applied to root:tailscale
+# by /usr/local/bin/cpz-tailscale once the account exists.
 
 CFG=/cfg
 A=$CFG/save.tar.gz
@@ -72,7 +78,8 @@ tar -tzf "$A" >/dev/null 2>&1 ||
     { echo "cpz-restore: archive unreadable, skipping" >&2; exit 0; }
 
 PASS_A="root home/cpz etc/dropbear etc/wpa_supplicant etc/hostname \
-etc/hosts etc/NetworkManager/system-connections var/lib/applaunch"
+etc/hosts etc/NetworkManager/system-connections var/lib/applaunch \
+var/lib/tailscale"
 PASS_B="etc/local.d etc/conf.d etc/apk/world \
 etc/NetworkManager/NetworkManager.conf \
 etc/NetworkManager/conf.d etc/NetworkManager/dispatcher.d"
@@ -103,6 +110,20 @@ chmod -R go-rwx /etc/NetworkManager/system-connections 2>/dev/null
 # so the extracted files come back root-owned and the app could no longer
 # persist its state (silent Off after a reflash). Restore cpz ownership.
 chown -R cpz:cpz /var/lib/applaunch 2>/dev/null
+
+# v0.21.3: the Tailscale state dir carries the node key and login profiles.
+# It may be restored before the optional package is reinstalled (cpz-wifi.start
+# runs the apk add in the background), so numeric ownership from an older
+# image could land on an unrelated account. Force it root-only now;
+# cpz-tailscale re-applies root:tailscale once the package exists.
+if [ -d /var/lib/tailscale ]; then
+    chmod 0700 /var/lib/tailscale 2>/dev/null
+    if grep -q '^tailscale:' /etc/group 2>/dev/null; then
+        chown -R root:tailscale /var/lib/tailscale 2>/dev/null
+    else
+        chown -R root:root /var/lib/tailscale 2>/dev/null
+    fi
+fi
 
 # pass B — image wins: create only paths the new image does not ship
 for p in $PASS_B; do

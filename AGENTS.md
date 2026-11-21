@@ -5,13 +5,15 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.21.2** (base repo `main`; the launcher fork is a
+Current release: **v0.21.3** (base repo `main`; the launcher fork is a
 sibling checkout in `launcher/`, branch `alpine`). v0.20.0 added Files
 and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
 startup and opens Files in `/home/cpz`; v0.21.0 makes `/cfg` (CPZDATA)
 cover the whole card on every flash route, including Windows/macOS/Etcher
 ones; v0.21.1 installs `shadow` so `passwd` works as `cpz`; v0.21.2
-preserves root/cpz password changes across a reflash.
+preserves root/cpz password changes across a reflash; v0.21.3 adds the
+optional Tailscale on/off app (hidden until installed + logged in) and
+keeps the node logged in across a reflash.
 
 ---
 
@@ -129,7 +131,9 @@ What survives a reflash (see `rootfs-overlay/usr/local/bin/cpz-save` /
   NetworkManager config tree** (`/etc/NetworkManager` — connection
   profiles incl. launcher-UI ones, plus `NetworkManager.conf`,
   `conf.d/` and `dispatcher.d/`), **`/var/lib/applaunch`**
-  (launcher config, HDMI preference)
+  (launcher config, HDMI/Tailscale preferences), **`/var/lib/tailscale`**
+  (optional Tailscale node key + login profiles, so the node is not
+  re-authenticated after a reflash)
 - pass B (additive): `/etc/local.d`, `/etc/conf.d`, `/etc/apk/world`,
   NetworkManager global config not shipped by the new image
 - narrow merge (v0.21.2): only the `root` and `cpz` lines of
@@ -217,7 +221,7 @@ complete release. The latest ZIP should also replace the loose image in
 
 ---
 
-# State (v0.21.2)
+# State (v0.21.3)
 
 ## What the image is
 
@@ -226,7 +230,9 @@ complete release. The latest ZIP should also replace the loose image in
 - APPLaunch launcher (fork, musl) owns the internal 320×170 ST7789 panel
   (`/dev/fb1`); Calculator, Files and Camera are the other app binaries.
 - **No app store, no demo games, no Python terminal.** Home carousel:
-  Settings, CLI, SSH, IP Panel, Files, Camera, Calculator, **HDMI**.
+  Settings, CLI, SSH, IP Panel, Files, Camera, Calculator, **HDMI**, and
+  **Tailscale** only when the optional package is installed and the node
+  is logged in.
 - Files starts in `/home/cpz`; Camera stills go to
   `~/Pictures/DCIM/Camera`, clips to `~/Videos/Camera`. All of it lives
   under `/home/cpz`, so the `/cfg` snapshot preserves it across reflashes.
@@ -269,6 +275,39 @@ complete release. The latest ZIP should also replace the loose image in
   `/run/seatd.sock`, clears zombie seatd pidfiles, detaches with
   `setsid`.
 
+## The Tailscale app and `cpz-tailscale`
+
+- Tailscale is **not** in the image. The user installs it on the device:
+  `apk add tailscale tailscale-openrc`, then `tailscale up`. The service
+  is `/etc/init.d/tailscale` (name `tailscale`, **not** `tailscaled`).
+- Launcher page `main/ui/page_app/ui_app_tailscale.{hpp,cpp}`: single
+  switch, state polled from `pidof tailscaled` (see the busybox trap
+  below), ENTER toggles, ESC returns home, 44 px `tailscale_100.png` icon.
+- It persists `/var/lib/applaunch/tailscale` (`1`/`0`) and runs
+  `sudo -n /usr/local/bin/cpz-tailscale apply on|off` in the background.
+  `apply` does **not** write the preference (the page owns it) so a slow
+  helper cannot resurrect an older toggle.
+- **Visibility is conditional**: `AppDescriptor::available` in
+  `builtin_app_registry.cpp` calls `cpz-tailscale available`, which is
+  true only when the daemon binary + init script exist AND
+  `/var/lib/tailscale/tailscaled.state` has a non-empty `_profiles`
+  (i.e. `tailscale up` completed). `Launch` re-polls the predicate every
+  20 s and rebuilds the carousel when it flips, so a post-reflash apk
+  reinstall makes the card appear without restarting the launcher.
+  Settings → Launcher hides the toggle under the same condition.
+- `cpz-tailscale` also owns the runlevel: ON adds `tailscale` to
+  `default` and starts it; OFF removes the link **first** and then stops
+  it. Removing the link is what makes OFF survive a reboot — OpenRC
+  starts default-runlevel services before `/etc/local.d` runs, so a boot
+  hook alone would reconnect for the first seconds of every boot.
+- Boot hook `rootfs-overlay/etc/local.d/cpz-tailscale-boot.start` runs
+  `cpz-tailscale boot`, which reads the preference and re-applies it. If
+  the package is still being reinstalled by `cpz-wifi.start`, it waits in
+  the background (bounded, 3 min) instead of blocking boot.
+- `/var/lib/tailscale` (node key + login profiles) is in `cpz-save` and
+  restored through pass A, so a reflash does not require re-auth. It is
+  0700 root and carries secrets just like the Wi-Fi PSKs.
+
 ## Lock screen
 
 - Alpine artwork replaces `share/images/lockscreen.png`
@@ -292,6 +331,9 @@ Added/fixed (all in `launcher/`):
   `build/25-launcher.sh`).
 - ALSA volume fallback (`amixer DACL/DACR`) when libpulse is absent.
 - HDMI app, Alpine lock-screen art, sysvinit power commands.
+- Tailscale tunnel toggle page + `AppDescriptor::available` conditional
+  registration (hidden until installed and logged in), plus the
+  `Launch` availability re-poll that makes the card appear at runtime.
 - `deploy/alpine/applaunch.initd|confd` (cpz user, log ownership).
 
 ---
@@ -329,6 +371,36 @@ Added/fixed (all in `launcher/`):
   `rm -f /run/applaunch.pid`, then start; `status` caches the old state.
 - `systemctl` does not exist; use `reboot`/`poweroff` (busybox), via
   `sudo -n` for cpz.
+
+### Tailscale (optional package, v0.21.3)
+- **The service is `tailscale`, not `tailscaled`.** Alpine's
+  `tailscale-openrc` ships `/etc/init.d/tailscale`; `rc-service tailscaled`
+  reports "service does not exist" while the daemon runs fine. The
+  *process* is `tailscaled`, which is what the launcher polls.
+- **`pgrep -x tailscaled` returns nothing on busybox** even while the
+  daemon runs: busybox applies `-x` to argv[0], and the init script runs
+  `/usr/sbin/tailscaled`. Use `pidof tailscaled` (basename match). Do not
+  "fix" this by adding `-f`, which would then compare the whole command
+  line.
+- **`tailscale status` is not a visibility test.** It needs the running
+  daemon, and the launcher card must stay visible while the tunnel is
+  OFF. Use the saved login state instead: `tailscaled.state` has a
+  non-empty `_profiles` only after `tailscale up` completed.
+- **`/var/lib/tailscale` is 0700**, so cpz cannot read the state file.
+  Every availability decision goes through `cpz-tailscale available`
+  under `sudo -n`; a `[ -f ... ]` in the launcher always returns false.
+- **OFF must delete the default-runlevel link.** OpenRC starts every
+  default service before `/etc/local.d` runs, so a hook that only calls
+  `rc-service tailscale stop` lets the node reconnect for the first
+  seconds of every boot (and, worse, the link survives a reflash in
+  `/etc/runlevels` only if the image shipped it — it does not).
+- The helper must not write the preference on `apply`: the launcher page
+  owns `/var/lib/applaunch/tailscale`, and a slow background helper that
+  wrote it could resurrect the previous toggle.
+- `apk add tailscale` adds it to `/etc/apk/world`, which pass B restores,
+  and `cpz-wifi.start` reinstalls `/cfg/pkglist.txt` in the **background**
+  at boot. The boot hook therefore has to tolerate "package not there
+  yet" and retry — it must not block the boot waiting.
 
 ### cp0 process API
 - `RunArgv`'s second argument is the **background flag parsed by
@@ -506,6 +578,8 @@ The upstream store is gone from the fork, but the apps are relevant:
 | `rootfs-overlay/etc/udev/rules.d/` | `99-cpz-device-groups.rules` (i2c/rtc/audio/dma_heap groups) |
 | `rootfs-overlay/etc/sudoers.d/cpz` | NOPASSWD grant (forced 0440 by `rootfs-configure.sh`) |
 | `rootfs-overlay/usr/local/bin/cpz-desktop` | on-demand HDMI session (root or cpz) |
+| `rootfs-overlay/usr/local/bin/cpz-tailscale` | optional Tailscale on/off (runlevel + service + availability) |
+| `rootfs-overlay/etc/local.d/cpz-tailscale-boot.start` | re-applies the saved Tailscale preference at boot |
 | `rootfs-overlay/usr/local/bin/cpz-save` | persistence snapshot → `/cfg/save.tar.gz` (hourly cron + manual) |
 | `rootfs-overlay/etc/cpz/` | `sway.config` (0644), `hdmi-mode` |
 | `rootfs-overlay/etc/cpz-release` | version + NOTES |
