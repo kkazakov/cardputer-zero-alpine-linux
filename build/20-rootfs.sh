@@ -38,6 +38,11 @@ APK_FLAGS="--no-cache --quiet"
 # e2fsprogs-extra gives resize2fs + dumpe2fs (Alpine splits them — resize2fs
 # is NOT in e2fsprogs). The image ships blkid already via a dependency, but
 # cpz-grow.start calls it directly, so it is listed explicitly.
+# v0.21.1: shadow supplies a setuid-root /usr/bin/passwd. Alpine's busybox
+# is NOT setuid, so its passwd applet dies with "must be suid to work
+# properly" when cpz (not root) runs it. shadow's passwd is 4755, uses PAM
+# and keeps the normal current-password prompt. Without this, changing the
+# password requires `sudo -n passwd cpz` (root) instead.
 PKGS="openrc busybox-openrc eudev eudev-openrc eudev-libs kbd dropbear
 iw doas i2c-tools alsa-utils alsa-lib usbutils
 tzdata openssl ca-certificates mkinitfs terminus-font bluez bluez-openrc
@@ -45,7 +50,7 @@ sway foot seatd seatd-openrc mesa-dri-gallium xkeyboard-config
 waybar bemenu dbus dbus-openrc tilix swaybg
 freetype libinput libxkbcommon dbus-libs glib curl libstdc++ bash
 networkmanager networkmanager-openrc networkmanager-wifi networkmanager-cli
-wpa_supplicant sudo
+wpa_supplicant sudo shadow
 ffmpeg v4l-utils-libs cjson libcamera libcamera-ipa libcamera-raspberrypi
 sfdisk e2fsprogs e2fsprogs-extra blkid"
 

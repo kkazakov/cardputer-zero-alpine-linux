@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.0
+VER=0.21.1
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -493,6 +493,14 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
         && [ "$(stat -c %a /mnt/rootfs/etc/sudoers.d/cpz)" = "440" ] \
         && echo "OK: /etc/sudoers.d/cpz present (0440, NOPASSWD)" \
         || echo "FAIL: cpz sudoers file missing or wrong mode"
+    # v0.21.1: Alpine's busybox is not setuid, so its `passwd` applet says
+    # "must be suid to work properly" when cpz runs it. The shadow package
+    # replaces the /usr/bin/passwd symlink with a 4755 root:root binary.
+    [ ! -L /mnt/rootfs/usr/bin/passwd ] \
+        && [ "$(stat -c %a /mnt/rootfs/usr/bin/passwd)" = "4755" ] \
+        && [ "$(stat -c %u:%g /mnt/rootfs/usr/bin/passwd)" = "0:0" ] \
+        && echo "OK: passwd is setuid root (shadow, not the busybox symlink)" \
+        || echo "FAIL: passwd is not setuid root — cpz cannot change its password"
     grep -q 'command_user="cpz:cpz"' /mnt/rootfs/etc/init.d/applaunch \
         && echo "OK: applaunch runs as user cpz" \
         || echo "FAIL: applaunch still runs as root"

@@ -1,15 +1,16 @@
-# FLASH AND TEST — CPZ-Alpine 0.21.0
+# FLASH AND TEST — CPZ-Alpine 0.21.1
 
 Built offline from M5's own stock image (Phase-A kernel graft). Core
 hardware support is field-verified through v0.19.0; v0.20.0 added the
 Files browser and Camera as default launcher applications, v0.20.1 fixes
-MIPI-CSI camera startup and opens Files in `/home/cpz`, and v0.21.0 makes
+MIPI-CSI camera startup and opens Files in `/home/cpz`, v0.21.0 makes
 the `CPZDATA` persistence partition cover the rest of the card on every
-flash route. Items marked [TEST] below still deserve one device pass.
+flash route, and v0.21.1 installs `shadow` so `passwd` works as `cpz`.
+Items marked [TEST] below still deserve one device pass.
 
 ## What you're flashing
 
-- `images/cpz-alpine-0.21.0.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
+- `images/cpz-alpine-0.21.1.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
   FAT32 boot (256 MiB) + ext4 root (1.5 GiB), MBR disk id `0x10c0ffee`
 - Base: Alpine Linux 3.24 aarch64, musl + BusyBox + OpenRC, **no systemd**
 - Kernel: M5 stock `6.18.33+rpt-rpi-v8` (bit-exact from the factory image,
@@ -25,7 +26,7 @@ The public download is the release ZIP:
 It contains the image, checksum, README and Linux/Windows/macOS flashers.
 
 ```sh
-sha256sum -c cpz-alpine-0.21.0.img.gz.sha256     # verify download
+sha256sum -c cpz-alpine-0.21.1.img.gz.sha256     # verify download
 # /dev/sdX = the LAB microSD card (NOT the stock card, NOT a disk!)
 lsblk                                          # triple-check sizes
 sudo ./flash-cpz.sh /dev/sdX                   # preserves /cfg on reflashes
@@ -45,7 +46,7 @@ mounted, so the card must reboot once before the filesystem can be
 created). Nothing else is different:
 
 ```sh
-gunzip -c cpz-alpine-0.21.0.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
+gunzip -c cpz-alpine-0.21.1.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 ```
 
@@ -174,6 +175,12 @@ flash the bigger card.
       retired for host mode; Wi-Fi/Ethernet SSH is the remote path.)
 - [ ] **T6 — SSH**: from your LAN: `ssh root@<ip>` (password `alpine`).
       Key-only lockdown comes later (S09) — don't expose this image.
+- [ ] **T6b — passwd (v0.21.1)**: as `cpz` (CLI app), `passwd` asks for
+      the current password and changes it — **not** `passwd: must be suid
+      to work properly`. `stat -c '%a %U:%G' /usr/bin/passwd` must print
+      `4755 root:root`. Root reset path: `sudo -n passwd cpz` (cpz has
+      NOPASSWD sudo). The hash lives in `/etc/shadow`, which is not in
+      `/cfg` — a reflash restores the build-time `alpine` password.
 - [ ] **T7 — Wi-Fi chips present**: `ip a` shows wlan0 (unconfigured —
       see below to join a network). `iw dev wlan0 scan | grep SSID` should
       list networks.

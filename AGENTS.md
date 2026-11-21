@@ -5,12 +5,12 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.21.0** (base repo `main`; the launcher fork is a
+Current release: **v0.21.1** (base repo `main`; the launcher fork is a
 sibling checkout in `launcher/`, branch `alpine`). v0.20.0 added Files
 and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
 startup and opens Files in `/home/cpz`; v0.21.0 makes `/cfg` (CPZDATA)
 cover the whole card on every flash route, including Windows/macOS/Etcher
-ones.
+ones; v0.21.1 installs `shadow` so `passwd` works as `cpz`.
 
 ---
 
@@ -209,7 +209,7 @@ complete release. The latest ZIP should also replace the loose image in
 
 ---
 
-# State (v0.21.0)
+# State (v0.21.1)
 
 ## What the image is
 
@@ -289,6 +289,22 @@ Added/fixed (all in `launcher/`):
 ---
 
 # Traps (field-learned — do not re-learn these)
+
+### Users / authentication
+- **Alpine's busybox is NOT setuid** (`-rwxr-xr-x` on 3.24), so its
+  `passwd` applet fails for a normal user: `passwd: must be suid to work
+  properly`. Root still succeeds, which is why the build's `chpasswd`
+  never exposed it. Do not "fix" this with `chmod u+s /bin/busybox` — all
+  applets would run privileged. The image ships the `shadow` package:
+  `/usr/bin/passwd` is 4755 root:root and uses PAM
+  (`/etc/pam.d/shadow-utils`). Verify with
+  `stat -c '%a %U:%G' /usr/bin/passwd` → `4755 root:root` and a test as
+  cpz, **not** as root (root works even with busybox).
+- `cpz` has NOPASSWD sudo, so the admin reset path is
+  `sudo -n passwd cpz` (or `... root`). Do not add a shell wrapper named
+  `passwd`: a script cannot be setuid, and sudo would just run the wrapper.
+- `/etc/shadow` is **not** in `cpz-save`. Password changes do not survive
+  a reflash — the image's `alpine` passwords come back.
 
 ### OpenRC / service
 - **start-stop-daemon switches to `command_user` BEFORE opening
