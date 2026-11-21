@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.11
+VER=0.21.12
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -760,6 +760,9 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'cpz-pkg.status' /mnt/rootfs/etc/local.d/cpz-wifi.start \
         && echo "OK: package install status file written" \
         || echo "FAIL: no package install status"
+    grep -q 'MISSING' /mnt/rootfs/etc/local.d/cpz-wifi.start \
+        && echo "OK: only missing packages are installed (not the whole world)" \
+        || echo "FAIL: boot install still adds the whole world"
     [ -x /mnt/rootfs/usr/local/bin/cpz-apk ] \
         && echo "OK: local .apk helper present" \
         || echo "FAIL: cpz-apk missing"

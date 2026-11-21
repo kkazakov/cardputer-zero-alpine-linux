@@ -44,8 +44,14 @@ if [ -s "$PKG" ] && mountpoint /cfg >/dev/null 2>&1; then
         [ -d /cfg/apk-keys ] && cp -p /cfg/apk-keys/* /etc/apk/keys/ 2>/dev/null
 
         n=0
+        MISSING=
         for p in $(cat "$PKG"); do
-            apk info -e "$p" >/dev/null 2>&1 || n=$((n + 1))
+            if apk info -e "$p" >/dev/null 2>&1; then
+                :
+            else
+                MISSING="$MISSING $p"
+                n=$((n + 1))
+            fi
         done
         localn=0
         for f in /cfg/apk/*.apk; do
@@ -62,7 +68,11 @@ if [ -s "$PKG" ] && mountpoint /cfg >/dev/null 2>&1; then
                 apk add --allow-untrusted "$f" >>"$LOG" 2>&1 || true
             done
             if [ "$n" -eq 0 ]; then break; fi
-            if apk add --no-cache $(cat "$PKG") >>"$LOG" 2>&1; then
+            # v0.21.12: add ONLY the missing packages. Adding the whole world
+            # (base + extras in one transaction) failed on the device even
+            # though `apk add tailscale` alone succeeds, so nothing was ever
+            # installed and the package stayed missing after a reflash.
+            if apk add --no-cache $MISSING >>"$LOG" 2>&1; then
                 n=0
                 break
             fi
