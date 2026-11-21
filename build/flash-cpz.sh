@@ -110,9 +110,12 @@ if [ -b "$PART_PRE" ] && [ "$(blkid -o value -s TYPE "$PART_PRE" 2>/dev/null || 
     fi
     if mkdir -p "$BK.mnt" && mount -o ro "$PART_PRE" "$BK.mnt" 2>/dev/null; then
         mkdir -p "$BK"
-        for f in save.tar.gz save.tar.gz.prev shadow-users pkglist.txt; do
+        for f in save.tar.gz save.tar.gz.prev shadow-users pkglist.txt world repositories ntp; do
             [ -f "$BK.mnt/$f" ] && cp -p "$BK.mnt/$f" "$BK/" 2>/dev/null || true
         done
+        # local packages installed from .apk files are not in any repo
+        [ -d "$BK.mnt/apk" ] && cp -a "$BK.mnt/apk" "$BK/" 2>/dev/null || true
+        [ -d "$BK.mnt/apk-keys" ] && cp -a "$BK.mnt/apk-keys" "$BK/" 2>/dev/null || true
         umount "$BK.mnt" || true
         rmdir "$BK.mnt" 2>/dev/null || true
         echo "   /cfg snapshot backed up to $PWD/$BK"
@@ -250,5 +253,38 @@ else
 fi
 
 sync
+
+# v0.21.10: put the pre-flash snapshot back. The e2fsck replay/repair above
+# can revert the last (unflushed) save.tar.gz to an older generation — the
+# field failure was a 30,346-byte archive in the backup but a 23,527-byte
+# one restored after the flash. The backup taken before the write is the
+# newest complete snapshot, so write it back instead of booting the older
+# one. This also carries /cfg/ntp (the NTP preference) across the flash.
+if [ "$HAD_EXT4" = 1 ] && [ -f "$BK/save.tar.gz" ]; then
+    echo "== restoring the pre-flash /cfg snapshot =="
+    MNT=/tmp/cpz-cfg-rewrite.$$
+    mkdir -p "$MNT"
+    if mount -t ext4 -o rw "$PART" "$MNT"; then
+        for f in save.tar.gz save.tar.gz.prev shadow-users pkglist.txt world repositories ntp; do
+            [ -f "$BK/$f" ] && cp -p "$BK/$f" "$MNT/$f" 2>/dev/null || true
+        done
+        if [ -d "$BK/apk" ]; then
+            mkdir -p "$MNT/apk"
+            cp -a "$BK/apk/." "$MNT/apk/" 2>/dev/null || true
+        fi
+        if [ -d "$BK/apk-keys" ]; then
+            mkdir -p "$MNT/apk-keys"
+            cp -a "$BK/apk-keys/." "$MNT/apk-keys/" 2>/dev/null || true
+        fi
+        chmod 600 "$MNT/save.tar.gz" "$MNT/save.tar.gz.prev" \
+            "$MNT/shadow-users" "$MNT/pkglist.txt" 2>/dev/null || true
+        sync
+        umount "$MNT" || echo "WARNING: could not unmount $MNT"
+    else
+        echo "WARNING: could not mount $PART rw to restore the snapshot"
+    fi
+    rmdir "$MNT" 2>/dev/null || true
+fi
+
 echo
 echo "done. Boot the card: everything under /cfg restores automatically."

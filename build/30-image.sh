@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.9
+VER=0.21.10
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -741,9 +741,28 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -x /mnt/rootfs/usr/local/bin/cpz-ntp ] \
         && echo "OK: NTP helper present" \
         || echo "FAIL: cpz-ntp missing (network time unavailable)"
-    [ -x /mnt/rootfs/etc/local.d/cpz-ntp.start ] \
+    [ -x /mnt/rootfs/etc/local.d/zz-cpz-ntp.start ] \
         && echo "OK: NTP boot hook present" \
         || echo "FAIL: cpz-ntp.start missing"
+    # v0.21.10: explicit package list + boot install status + launcher toast.
+    grep -q 'CFG/world' /mnt/rootfs/usr/local/bin/cpz-save \
+        && echo "OK: /cfg/world saved" \
+        || echo "FAIL: cpz-save does not save /cfg/world"
+    grep -q 'cpz-pkg.status' /mnt/rootfs/etc/local.d/cpz-wifi.start \
+        && echo "OK: package install status file written" \
+        || echo "FAIL: no package install status"
+    [ -x /mnt/rootfs/usr/local/bin/cpz-apk ] \
+        && echo "OK: local .apk helper present" \
+        || echo "FAIL: cpz-apk missing"
+    grep -q 'cfg/apk' /mnt/rootfs/etc/local.d/cpz-wifi.start \
+        && echo "OK: local .apk files reinstalled at boot" \
+        || echo "FAIL: /cfg/apk not processed at boot"
+    grep -q 'CFG/repositories' /mnt/rootfs/usr/local/bin/cpz-save \
+        && echo "OK: custom apk repositories saved" \
+        || echo "FAIL: custom repositories not saved"
+    [ -f /mnt/rootfs/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch ] \
+        && echo "OK: launcher present" \
+        || echo "FAIL: launcher missing"
     # v0.19.0: NetworkManager config must ride the persistence layer, and
     # the restore must actually overwrite user files. The old restore used
     # -xzpkf ("k" = keep-old-files) on pass A and tar -k on pass B, so

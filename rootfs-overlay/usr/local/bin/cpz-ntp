@@ -10,8 +10,11 @@
 # hook starts it in the background after the network has had a chance to
 # come up; the toggle starts it immediately.
 
-PREF=/var/lib/cpz/ntp
-mkdir -p /var/lib/cpz 2>/dev/null
+PREF=/cfg/ntp
+if ! mountpoint /cfg >/dev/null 2>&1; then
+    PREF=/var/lib/cpz/ntp
+    mkdir -p /var/lib/cpz 2>/dev/null
+fi
 
 running()
 {

@@ -25,9 +25,57 @@
 
 rfkill unblock all 2>/dev/null
 
-# user packages from the persistence partition (background, needs net)
-if [ -s /cfg/pkglist.txt ] && [ -d /cfg ]; then
-    ( apk add --no-cache $(cat /cfg/pkglist.txt) >/dev/null 2>&1 ) &
+# user packages from the persistence partition (background, needs net).
+# v0.21.10: /cfg/world is the explicit package list (tailscale, ...).
+# pkglist.txt (every installed package) is the fallback for cards saved by
+# older images. Report progress in /run/cpz-pkg.status so the launcher can
+# show it: pending N -> installing N -> ok|failed.
+PKG=/cfg/world
+[ -s "$PKG" ] || PKG=/cfg/pkglist.txt
+if [ -s "$PKG" ] && mountpoint /cfg >/dev/null 2>&1; then
+    (
+        STATUS=/run/cpz-pkg.status
+        LOG=/var/log/cpz-pkg.log
+
+        # v0.21.10: a custom repository config and local .apk files are part
+        # of the user's package state too. Restore the repo list first, then
+        # install /cfg/apk/*.apk (out-of-repository packages), then the world.
+         [ -s /cfg/repositories ] && cp /cfg/repositories /etc/apk/repositories 2>/dev/null
+        [ -d /cfg/apk-keys ] && cp -p /cfg/apk-keys/* /etc/apk/keys/ 2>/dev/null
+
+        n=0
+        for p in $(cat "$PKG"); do
+            apk info -e "$p" >/dev/null 2>&1 || n=$((n + 1))
+        done
+        localn=0
+        for f in /cfg/apk/*.apk; do
+            [ -f "$f" ] && localn=$((localn + 1))
+        done
+        echo "pending $((n + localn))" > "$STATUS"
+        echo "$(date -u) pending $n repo + $localn local package(s)" >> "$LOG"
+
+        i=0
+        while [ "$i" -lt 18 ]; do
+            echo "installing $((n + localn))" > "$STATUS"
+            for f in /cfg/apk/*.apk; do
+                [ -f "$f" ] || continue
+                apk add --allow-untrusted "$f" >>"$LOG" 2>&1 || true
+            done
+            if [ "$n" -eq 0 ]; then break; fi
+            if apk add --no-cache $(cat "$PKG") >>"$LOG" 2>&1; then
+                n=0
+                break
+            fi
+            sleep 10
+            i=$((i + 1))
+        done
+        if [ "$n" -eq 0 ]; then
+            echo "ok" > "$STATUS"
+        else
+            echo "failed" > "$STATUS"
+        fi
+        echo "$(date -u) $(cat "$STATUS" 2>/dev/null)" >> "$LOG"
+    ) &
 fi
 
 exit 0

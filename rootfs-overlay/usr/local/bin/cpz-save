@@ -144,6 +144,24 @@ else
 fi
 
 apk info -q > $CFG/pkglist.txt 2>/dev/null
+
+# v0.21.10: /etc/apk/world is the list of packages the user explicitly
+# added (tailscale, ...). pkglist.txt is every installed package; world is
+# what a fresh image must re-add. Keep both.
+cp -p /etc/apk/world "$CFG/world.new" 2>/dev/null &&
+    chmod 644 "$CFG/world.new" 2>/dev/null &&
+    mv "$CFG/world.new" "$CFG/world"
+
+# Custom repository config (a package installed from a third-party repo is
+# only a name in world; the repo must come back too).
+cp -p /etc/apk/repositories "$CFG/repositories.new" 2>/dev/null &&
+    chmod 644 "$CFG/repositories.new" 2>/dev/null &&
+    mv "$CFG/repositories.new" "$CFG/repositories"
+
+# Custom repo signing keys (local .apk files use --allow-untrusted instead).
+mkdir -p "$CFG/apk-keys"
+cp -p /etc/apk/keys/* "$CFG/apk-keys/" 2>/dev/null || true
+
 sync
 
 echo "cpz-save: $(wc -c < $CFG/save.tar.gz) bytes -> $CFG/save.tar.gz"

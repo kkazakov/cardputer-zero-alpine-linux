@@ -1,0 +1,32 @@
+#!/bin/sh
+# /usr/local/bin/cpz-apk — install a package from a local .apk and keep it
+# across a reflash.
+#
+# `apk add /path/foo.apk` records only the package NAME in /etc/apk/world;
+# the .apk itself is not in any repository, so a fresh image cannot reinstall
+# it from the name alone. This wrapper copies the file to /cfg/apk/ and the
+# boot hook installs every /cfg/apk/*.apk with --allow-untrusted before it
+# processes /cfg/world.
+#
+# Usage: sudo cpz-apk add /path/to/package.apk
+
+case "${1:-}" in
+    add)
+        f=${2:-}
+        [ -f "$f" ] || { echo "cpz-apk: no such file: $f" >&2; exit 1; }
+        mkdir -p /cfg/apk || exit 1
+        cp -p "$f" /cfg/apk/ || exit 1
+        apk add --allow-untrusted "$f" || exit 1
+        /usr/local/bin/cpz-save
+        echo "cpz-apk: installed and saved $(basename "$f")"
+        ;;
+    list)
+        ls -l /cfg/apk 2>/dev/null || true
+        ;;
+    *)
+        echo "usage: cpz-apk add /path/to/package.apk | list" >&2
+        exit 2
+        ;;
+esac
+
+exit 0
