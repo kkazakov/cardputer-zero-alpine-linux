@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.7
+VER=0.21.8
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -697,15 +697,33 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'cpz-save.lock' /mnt/rootfs/usr/local/bin/cpz-save \
         && echo "OK: cpz-save serialized (lock)" \
         || echo "FAIL: cpz-save has no lock — triggers can race"
-    # v0.21.7: save within seconds of a config change (card pulled/power
-    # cut before the next tick), keep the previous archive, and leave a
-    # restore trace on /cfg.
+    # v0.21.7/v0.21.8: save the moment a config path changes (card pulled /
+    # power cut before the next tick), keep the previous archive, and leave
+    # a restore trace on /cfg. v0.21.8 swapped the 5 s `stat` poll for
+    # event-driven busybox inotifyd plus a 60 s poll fallback.
     [ -x /mnt/rootfs/usr/local/bin/cpz-state-watch ] \
         && echo "OK: config change watcher present" \
         || echo "FAIL: cpz-state-watch missing"
+    [ -x /mnt/rootfs/usr/local/bin/cpz-state-watch-handler ] \
+        && echo "OK: inotifyd handler present" \
+        || echo "FAIL: cpz-state-watch-handler missing"
     [ -x /mnt/rootfs/etc/local.d/cpz-state-watch.start ] \
         && echo "OK: watcher starts at boot" \
         || echo "FAIL: cpz-state-watch.start missing"
+    grep -q 'inotifyd' /mnt/rootfs/usr/local/bin/cpz-state-watch \
+        && echo "OK: watcher is event-driven (inotifyd)" \
+        || echo "FAIL: watcher is not inotifyd-based"
+    grep -q 'INOTIFY_FALLBACK' /mnt/rootfs/usr/local/bin/cpz-state-watch \
+        && echo "OK: watcher has a poll fallback for lost watches" \
+        || echo "FAIL: watcher has no fallback for inotify overflow"
+    grep -q 'sleep 60' /mnt/rootfs/usr/local/bin/cpz-state-watch \
+        && echo "OK: watcher fallback polls at 60 s (not 5 s)" \
+        || echo "FAIL: watcher fallback interval wrong"
+    grep -q 'cpz-state-watch save' /mnt/rootfs/etc/local.d/cpz-state-watch.start \
+        && grep -q 'cpz-state-watch dir' /mnt/rootfs/etc/local.d/cpz-state-watch.start \
+        && grep -q 'INOTIFY_FALLBACK=1' /mnt/rootfs/etc/local.d/cpz-state-watch.start \
+        && echo "OK: boot starts file, dir and fallback watchers" \
+        || echo "FAIL: boot hook does not start all three watchers"
     grep -q 'save.tar.gz.prev' /mnt/rootfs/usr/local/bin/cpz-save \
         && echo "OK: previous archive generation kept" \
         || echo "FAIL: cpz-save does not keep save.tar.gz.prev"

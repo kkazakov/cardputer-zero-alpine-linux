@@ -1,14 +1,30 @@
 #!/bin/sh
-# /etc/local.d/cpz-state-watch.start — start the change watcher once.
+# /etc/local.d/cpz-state-watch.start — start the inotify watcher trio.
 #
-# Runs in the `local` service as root after cpz-restore.start. The watcher
-# lives in /usr/local/bin and saves /cfg within ~5 s of a config change, so
-# pulling the card while the device runs loses at most that, instead of
-# waiting for the 5-minute cron or a clean shutdown.
+# Runs in the `local` service as root after cpz-restore.start:
+#
+#   save      inotifyd over the config files (c/w/e/0 -> cpz-save)
+#   dir       inotifyd over the parent directories (e/y/n/m/d -> cpz-save)
+#   fallback  60 s signature poll (INOTIFY_FALLBACK=1)
+#
+# The directory watch is what catches an atomic rename (shadow.new ->
+# /etc/shadow) that a file watch cannot report. The fallback covers an
+# inotify queue overflow or a lost watch.
+#
+# v0.21.8: the previous generation is reaped so `rc-service local restart`
+# never stacks watchers. `pkill -x inotifyd` is safe here: the image has no
+# other inotifyd user.
 
 [ -x /usr/local/bin/cpz-state-watch ] || exit 0
-if pgrep -f /usr/local/bin/cpz-state-watch >/dev/null 2>&1; then
-    exit 0
-fi
-setsid /usr/local/bin/cpz-state-watch </dev/null >/dev/null 2>&1 &
+[ -x /usr/local/bin/cpz-state-watch-handler ] || exit 0
+
+pkill -f '/usr/local/bin/cpz-state-watch' 2>/dev/null
+pkill -x inotifyd 2>/dev/null
+sleep 1
+
+setsid /usr/local/bin/cpz-state-watch save </dev/null >/dev/null 2>&1 &
+setsid /usr/local/bin/cpz-state-watch dir </dev/null >/dev/null 2>&1 &
+setsid sh -c 'INOTIFY_FALLBACK=1 exec /usr/local/bin/cpz-state-watch' \
+    </dev/null >/dev/null 2>&1 &
+
 exit 0

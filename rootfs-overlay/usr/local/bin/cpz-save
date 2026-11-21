@@ -64,9 +64,23 @@ CFG=/cfg
 # serialize them: the loser exits immediately, the winner's snapshot is
 # complete. The lock lives on tmpfs and disappears at boot.
 LOCK=/run/cpz-save.lock
-if ! mkdir "$LOCK" 2>/dev/null; then
-    exit 0
+WAIT=0
+[ "${1:-}" = "--wait" ] && WAIT=1
+GOT=0
+if mkdir "$LOCK" 2>/dev/null; then
+    GOT=1
+elif [ "$WAIT" = 1 ]; then
+    # v0.21.8: the shutdown hook must not lose the last snapshot just
+    # because the watcher/cron happened to be saving at that moment. Wait
+    # up to ~10 s for the in-flight save, then take the lock.
+    n=0
+    while [ "$n" -lt 100 ]; do
+        sleep 0.1
+        if mkdir "$LOCK" 2>/dev/null; then GOT=1; break; fi
+        n=$((n + 1))
+    done
 fi
+[ "$GOT" = 1 ] || exit 0
 trap 'rmdir "$LOCK" 2>/dev/null' EXIT INT TERM
 
 if ! mountpoint $CFG >/dev/null 2>&1; then

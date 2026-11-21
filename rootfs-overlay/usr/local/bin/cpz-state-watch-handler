@@ -1,0 +1,43 @@
+#!/bin/sh
+# /usr/local/bin/cpz-state-watch-handler — inotifyd callback.
+#
+# busybox inotifyd execs this for every event with:
+#   $1 = event letters (e.g. "c", "w", "n", "m", "x", "o")
+#   $2 = watched path
+#   $3 = subfile name (directory watches only)
+#
+# cpz-save is lock-serialized, so overlapping events collapse into one
+# winning snapshot. A short stamp avoids saving twice for the w+0 pair that
+# a single write produces.
+
+RUN=/run/cpz-state-watch
+STAMP=$RUN/stamp
+
+case "${1:-}" in
+    *o*|*x*|*u*)
+        # queue overflow / watch lost / fs unmounted: ask the 60 s fallback
+        # to re-hash and save. The inotifyd instance may be dead after x/u;
+        # the fallback is what keeps persistence alive until the next boot.
+        mkdir -p "$RUN" 2>/dev/null
+        : > "$RUN/rescan" 2>/dev/null
+        exit 0
+        ;;
+esac
+
+# tailscaled rewrites these constantly; they are not user configuration.
+case "${3:-}" in
+    derpmap.cached.json|tailscaled.log.conf)
+        exit 0
+        ;;
+esac
+
+mkdir -p "$RUN" 2>/dev/null
+now=$(date +%s 2>/dev/null || echo 0)
+last=$(cat "$STAMP" 2>/dev/null || echo 0)
+if [ "$now" != 0 ] && [ $((now - last)) -lt 3 ]; then
+    exit 0
+fi
+echo "$now" > "$STAMP" 2>/dev/null
+
+/usr/local/bin/cpz-save >/dev/null 2>&1
+exit 0

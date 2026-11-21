@@ -26,7 +26,9 @@ persistence keep up with setup (`cpz-save` every 5 minutes, on
 NetworkManager connect, after a Tailscale toggle and at shutdown) and
 stops the flasher formatting a dirty-but-valid CPZDATA, and v0.21.7
 saves within ~5 s of a config change and keeps the previous archive for
-recovery. Files and
+recovery. v0.21.8 makes that watcher event-driven (busybox `inotifyd` on
+the config files and their parent directories) with a 60 s poll fallback,
+so a change snapshots instantly and idle CPU drops to roughly zero. Files and
 Camera content lives under `/home/cpz`, so reflashes preserve it. The
 device test checklist is in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
@@ -367,8 +369,12 @@ ext4 filesystem to the partition. On the device, `cpz-save` snapshots
 config tree, `/var/lib/applaunch`, and additive `/etc/local.d`, `/etc/conf.d`,
 and `/etc/apk/world` into `/cfg`; every boot restores them
 (`cpz-restore.start`). Since v0.21.7 a small watcher (`cpz-state-watch`)
-saves within ~5 s of a password/SSH/NM/Tailscale/launcher change, and
-`cpz-save` keeps the previous archive as `/cfg/save.tar.gz.prev`, which
+saved within ~5 s of a password/SSH/NM/Tailscale/launcher change; since
+v0.21.8 it is event-driven — busybox `inotifyd` on the config files and
+their parent directories fires `cpz-save` the instant something changes,
+with a 60 s poll as the fallback for an inotify queue overflow (`o`) or a
+lost watch (`x`) after an atomic rename. `cpz-save` keeps the previous
+archive as `/cfg/save.tar.gz.prev`, which
 the restore falls back to if the current one is unreadable. The 5-minute
 cron, NetworkManager connect, Tailscale toggle and shutdown hooks remain
 as backstops. Pulling the card in the middle of a save can still lose

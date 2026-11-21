@@ -73,30 +73,58 @@
 
 CFG=/cfg
 A=$CFG/save.tar.gz
+ROOTLOG=/var/log/cpz-restore.log
 
-# mount the data partition if present (raw-dd flashes have no p3 — skip)
-if [ -b /dev/mmcblk0p3 ] && ! mountpoint $CFG >/dev/null 2>&1; then
-    mkdir -p $CFG
-    mount -t ext4 -o rw /dev/mmcblk0p3 $CFG 2>/dev/null
+# v0.21.8: local.d can run before the mmcblk partition node is ready on some
+# boots; the old script silently exited then (no log, no restore). Wait for
+# the node, retry the mount, and always leave a trace on the rootfs too —
+# /cfg is only writable once the mount succeeds.
+tlog() { echo "$(date -u) $*" >> "$ROOTLOG" 2>/dev/null; }
+clog() { tlog "$*"; echo "$(date -u) $*" >> "$CFG/cpz-restore.log" 2>/dev/null; }
+
+tlog "restore start"
+i=0
+while [ ! -b /dev/mmcblk0p3 ] && [ "$i" -lt 15 ]; do
+    sleep 1
+    i=$((i + 1))
+done
+if [ ! -b /dev/mmcblk0p3 ]; then
+    tlog "no /dev/mmcblk0p3 after ${i}s, skipping"
+    exit 0
 fi
-
-mountpoint $CFG >/dev/null 2>&1 || exit 0
+if ! mountpoint $CFG >/dev/null 2>&1; then
+    mkdir -p $CFG
+    i=0
+    while [ "$i" -lt 5 ]; do
+        mount -t ext4 -o rw /dev/mmcblk0p3 $CFG 2>/dev/null && break
+        sleep 1
+        i=$((i + 1))
+    done
+fi
+if ! mountpoint $CFG >/dev/null 2>&1; then
+    tlog "could not mount /dev/mmcblk0p3 on /cfg, skipping"
+    exit 0
+fi
+clog "cfg mounted"
 [ -s "$A" ] || A=$CFG/save.tar.gz.prev
-[ -s "$A" ] || exit 0
+if [ ! -s "$A" ]; then
+    clog "no save.tar.gz, nothing to restore"
+    exit 0
+fi
 # v0.21.7: fall back to the previous generation if the current archive is
 # unreadable, and leave a short trace on /cfg so a failed restore is
 # diagnosable after the fact (logger goes nowhere without a syslog daemon).
 if ! tar -tzf "$A" >/dev/null 2>&1; then
     if [ -s "$CFG/save.tar.gz.prev" ] && tar -tzf "$CFG/save.tar.gz.prev" >/dev/null 2>&1; then
         A=$CFG/save.tar.gz.prev
-        echo "$(date -u) main archive unreadable, using previous generation" >> "$CFG/cpz-restore.log"
+        clog "main archive unreadable, using previous generation"
     else
-        echo "$(date -u) no readable archive, skipping" >> "$CFG/cpz-restore.log"
+        clog "no readable archive, skipping"
         echo "cpz-restore: archive unreadable, skipping" >&2
         exit 0
     fi
 fi
-echo "$(date -u) restoring $(basename "$A") ($(wc -c < "$A") bytes)" >> "$CFG/cpz-restore.log"
+clog "restoring $(basename "$A") ($(wc -c < "$A") bytes)"
 
 PASS_A="root home/cpz etc/dropbear etc/wpa_supplicant etc/hostname \
 etc/hosts etc/NetworkManager/system-connections var/lib/applaunch \
@@ -229,7 +257,7 @@ if nmcli -t general status >/dev/null 2>&1; then
 fi
 
 NMPROF=$(ls /etc/NetworkManager/system-connections 2>/dev/null | wc -l)
-echo "$(date -u) done: $NMPROF NetworkManager profile(s) available" >> "$CFG/cpz-restore.log"
+clog "done: $NMPROF NetworkManager profile(s) available"
 logger -t cpz-restore \
     "restored snapshot: $NMPROF NetworkManager profile(s) available" \
     2>/dev/null || true

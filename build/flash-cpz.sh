@@ -75,6 +75,58 @@ if awk -v d="$DEV" '$1 ~ "^"d {found=1} END{exit !found}' /proc/mounts; then
     echo "ERROR: $DEV still has mounted partitions"; exit 1
 fi
 
+# v0.21.8: safety net. The flasher must never be able to destroy an
+# existing /cfg. Before writing anything:
+#   - if p3 already carries an ext4 filesystem, repair it read-only and
+#     copy its snapshot into the current directory (a real backup the
+#     user can restore from even if the card is later erased);
+#   - refuse to continue if that filesystem cannot be mounted, unless
+#     the user explicitly passes --format.
+# After the write, an ext4 signature is kept; mkfs only happens when
+# there was no ext4 signature before the write either.
+FORMAT=0
+for a in "$@"; do [ "$a" = "--format" ] && FORMAT=1; done
+command -v blkid >/dev/null 2>&1 || {
+    echo "ERROR: blkid not found; refusing to flash without a CPZDATA check" >&2
+    exit 1
+}
+case "$(basename "$DEV")" in
+    *[0-9]) PART_PRE="${DEV}p3" ;;
+    *)      PART_PRE="${DEV}3" ;;
+esac
+HAD_EXT4=0
+BK="cpz-cfg-backup-$(date +%Y%m%d-%H%M%S)"
+if [ -b "$PART_PRE" ] && [ "$(blkid -o value -s TYPE "$PART_PRE" 2>/dev/null || true)" = "ext4" ]; then
+    HAD_EXT4=1
+    echo "== existing CPZDATA detected — protecting it =="
+    if ! fsck.ext4 -n "$PART_PRE" >/dev/null 2>&1; then
+        echo "   journal needs replay — repairing (not formatting)"
+        e2fsck -f -y "$PART_PRE" >/dev/null 2>&1 || true
+    fi
+    if ! fsck.ext4 -n "$PART_PRE" >/dev/null 2>&1 && [ "$FORMAT" = 0 ]; then
+        echo "ERROR: $PART_PRE is ext4 but cannot be repaired; refusing to format it." >&2
+        echo "       Re-run with --format to erase /cfg deliberately." >&2
+        exit 1
+    fi
+    if mkdir -p "$BK.mnt" && mount -o ro "$PART_PRE" "$BK.mnt" 2>/dev/null; then
+        mkdir -p "$BK"
+        for f in save.tar.gz save.tar.gz.prev shadow-users pkglist.txt; do
+            [ -f "$BK.mnt/$f" ] && cp -p "$BK.mnt/$f" "$BK/" 2>/dev/null || true
+        done
+        umount "$BK.mnt" || true
+        rmdir "$BK.mnt" 2>/dev/null || true
+        echo "   /cfg snapshot backed up to $PWD/$BK"
+        [ -n "${SUDO_UID:-}" ] && chown -R "$SUDO_UID:${SUDO_GID:-$SUDO_UID}" "$BK" 2>/dev/null || true
+    else
+        rmdir "$BK.mnt" 2>/dev/null || true
+        if [ "$FORMAT" = 0 ]; then
+            echo "ERROR: cannot mount $PART_PRE read-only to back it up; refusing to flash." >&2
+            echo "       Re-run with --format to erase /cfg deliberately." >&2
+            exit 1
+        fi
+    fi
+fi
+
 echo "== flashing $IMG -> $DEV =="
 case "$IMG" in
     *.gz) gunzip -c "$IMG" | dd of="$DEV" bs=4M conv=fsync status=progress ;;
@@ -125,31 +177,52 @@ if [ ! -b "$PART" ]; then
 fi
 
 echo "== checking the data filesystem =="
-PTYPE=
-command -v blkid >/dev/null 2>&1 && PTYPE=$(blkid -o value -s TYPE "$PART" 2>/dev/null || true)
-if [ "$PTYPE" = "ext4" ] && ! fsck.ext4 -n "$PART" >/dev/null 2>&1; then
-    # v0.21.6: a dirty journal is NOT corruption. `fsck -n` cannot replay
-    # it and returns non-zero; the old code read that as "format", so a
-    # reflash after an unclean shutdown destroyed a perfectly good /cfg
-    # (field report: Wi-Fi/Tailscale/passwords/SSH all reset). Repair it.
-    echo "CPZDATA needs a journal replay/repair — repairing, NOT formatting"
-    e2fsck -f -y "$PART" >/dev/null 2>&1 || true
-fi
-if fsck.ext4 -n "$PART" >/dev/null 2>&1; then
-    echo "CPZDATA intact — your data survives this flash."
-else
-    echo "CPZDATA absent/corrupt (first flash?) — formatting $PART"
+do_mkfs()
+{
+    p=$1
     # partx can expose the node a hair before the kernel finishes wiring it
     # up; mkfs then fails with "No such device or address". Settle and retry.
     if command -v udevadm >/dev/null 2>&1; then
         udevadm settle -t 3 2>/dev/null || true
     fi
     n=0
-    until mkfs.ext4 -F -L CPZDATA "$PART"; do
+    until mkfs.ext4 -F -L CPZDATA "$p"; do
         n=$((n + 1))
-        [ "$n" -ge 3 ] && { echo "ERROR: cannot format $PART" >&2; exit 1; }
+        [ "$n" -ge 3 ] && { echo "ERROR: cannot format $p" >&2; exit 1; }
         sleep 1
     done
+}
+
+PTYPE=$(blkid -o value -s TYPE "$PART" 2>/dev/null || true)
+if [ "$FORMAT" = 1 ]; then
+    echo "--format requested — erasing CPZDATA on $PART"
+    do_mkfs "$PART"
+elif [ "$PTYPE" = "ext4" ]; then
+    if ! fsck.ext4 -n "$PART" >/dev/null 2>&1; then
+        # v0.21.6: a dirty journal is NOT corruption. `fsck -n` cannot replay
+        # it and returns non-zero; the old code read that as "format", so a
+        # reflash after an unclean shutdown destroyed a perfectly good /cfg
+        # (field report: Wi-Fi/Tailscale/passwords/SSH all reset). Repair it.
+        echo "CPZDATA needs a journal replay/repair — repairing, NOT formatting"
+        e2fsck -f -y "$PART" >/dev/null 2>&1 || true
+    fi
+    if fsck.ext4 -n "$PART" >/dev/null 2>&1; then
+        echo "CPZDATA intact — your data survives this flash."
+    else
+        echo "ERROR: $PART is ext4 but cannot be repaired; refusing to format it." >&2
+        echo "       Re-run with --format to erase /cfg deliberately." >&2
+        exit 1
+    fi
+elif [ "$HAD_EXT4" = 1 ]; then
+    # The pre-write check saw ext4, but the freshly re-created node is not
+    # readable yet. Never turn that into a silent mkfs: abort and let the
+    # user re-run (the backup from the pre-check is already on disk).
+    echo "ERROR: CPZDATA was ext4 before the write but $PART is not visible yet." >&2
+    echo "       Refusing to format it. Re-run the script (the node should be ready)." >&2
+    exit 1
+else
+    echo "CPZDATA has no ext4 signature (first flash) — formatting $PART"
+    do_mkfs "$PART"
 fi
 
 # v0.21.0: the partition runs to the end of the card, but an ext4

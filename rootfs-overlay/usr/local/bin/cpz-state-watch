@@ -1,33 +1,49 @@
 #!/bin/sh
-# /usr/local/bin/cpz-state-watch — save /cfg within seconds of a config change.
+# /usr/local/bin/cpz-state-watch — save /cfg the moment a config path changes.
 #
-# The 5-minute cron, the NetworkManager dispatcher and the shutdown hook all
-# miss one case: the card is pulled / power is cut while the device is
-# running, so nothing after the last tick is written. This watcher polls only
-# the cheap, important paths (passwords, SSH keys, NM profiles, Tailscale
-# state/preference, launcher prefs, hostname/hosts) every 5 s and calls
-# cpz-save when one changes.
+# v0.21.8: event-driven. Three instances are started by
+# cpz-state-watch.start:
 #
-# It deliberately does NOT watch /home/cpz content (photos/videos): that can
-# change continuously and is covered by the cron + shutdown snapshot. cpz-save
-# itself is lock-serialized, so a save triggered here cannot race another.
+#   cpz-state-watch save      inotifyd over the config FILES
+#   cpz-state-watch dir       inotifyd over the parent DIRECTORIES
+#   INOTIFY_FALLBACK=1 ...    60 s signature poll (safety net)
+#
+# The directory watch is what catches an atomic rename (`shadow.new` ->
+# `/etc/shadow`): a file watch only sees the old inode die (`x`) and never
+# reports the new content. The 60 s fallback covers an overflow (`o`), a lost
+# watch (`x`) or an unmounted filesystem (`u`), where inotifyd has stopped.
+#
+# The handler is a real executable (/usr/local/bin/cpz-state-watch-handler),
+# not a shell function: inotifyd execs PROG per event and cannot call a
+# function defined in this script.
+#
+# /home/cpz media is deliberately not watched (it changes continuously and is
+# covered by the 5-minute cron + shutdown snapshot). cpz-save is lock-
+# serialized, so overlapping events collapse into one snapshot.
 
-WATCH="/etc/shadow \
-/etc/NetworkManager/system-connections \
-/var/lib/tailscale/tailscaled.state \
-/var/lib/applaunch/tailscale \
-/var/lib/applaunch/hdmi-desktop \
-/var/lib/applaunch/config.json \
-/root/.ssh/authorized_keys \
-/home/cpz/.ssh/authorized_keys \
+RUN=/run/cpz-state-watch
+HANDLER=/usr/local/bin/cpz-state-watch-handler
+mkdir -p "$RUN" 2>/dev/null
+
+WATCH_FILES="/etc/shadow \
 /etc/hostname \
 /etc/hosts \
 /etc/wpa_supplicant/wpa_supplicant.conf \
-/etc/apk/world"
+/etc/apk/world \
+/var/lib/tailscale/tailscaled.state \
+/var/lib/applaunch/tailscale \
+/var/lib/applaunch/hdmi-desktop \
+/var/lib/applaunch/config.json"
+
+WATCH_DIRS="/etc/NetworkManager/system-connections \
+/var/lib/tailscale \
+/var/lib/applaunch \
+/root/.ssh \
+/home/cpz/.ssh"
 
 signature()
 {
-    for p in $WATCH; do
+    for p in $WATCH_FILES $WATCH_DIRS; do
         [ -e "$p" ] || continue
         if [ -d "$p" ]; then
             find "$p" -type f -exec stat -c '%n %Y %s' {} \; 2>/dev/null
@@ -37,13 +53,47 @@ signature()
     done
 }
 
-last=
-while :; do
-    now=$(signature | md5sum 2>/dev/null)
-    if [ -n "$last" ] && [ "$now" != "$last" ]; then
-        logger -t cpz-state-watch "config changed, snapshotting" 2>/dev/null
-        /usr/local/bin/cpz-save >/dev/null 2>&1
-    fi
-    last=$now
-    sleep 5
-done
+fallback()
+{
+    last=
+    while :; do
+        if [ -f "$RUN/rescan" ]; then
+            rm -f "$RUN/rescan"
+            /usr/local/bin/cpz-save >/dev/null 2>&1
+        fi
+        now=$(signature | md5sum 2>/dev/null)
+        if [ -n "$last" ] && [ "$now" != "$last" ]; then
+            logger -t cpz-state-watch "config changed, snapshotting" 2>/dev/null
+            /usr/local/bin/cpz-save >/dev/null 2>&1
+        fi
+        last=$now
+        sleep 60
+    done
+}
+
+if [ "${INOTIFY_FALLBACK:-}" = "1" ]; then
+    fallback
+    exit 0
+fi
+
+mode=${1:-save}
+case "$mode" in
+    save)
+        specs=
+        for p in $WATCH_FILES; do
+            [ -e "$p" ] || continue
+            specs="$specs $p:cwe0"
+        done
+        [ -n "$specs" ] && exec inotifyd "$HANDLER" $specs
+        ;;
+    dir)
+        specs=
+        for p in $WATCH_DIRS; do
+            [ -d "$p" ] || continue
+            specs="$specs $p:eynmd"
+        done
+        [ -n "$specs" ] && exec inotifyd "$HANDLER" $specs
+        ;;
+esac
+
+exit 0

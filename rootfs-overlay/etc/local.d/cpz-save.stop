@@ -12,5 +12,7 @@
 # call cpz-save; cpz-save serializes them with /run/cpz-save.lock.
 
 [ -x /usr/local/bin/cpz-save ] || exit 0
-/usr/local/bin/cpz-save
+# v0.21.8: wait for an in-flight save instead of silently skipping the last
+# snapshot when the watcher/cron holds the lock at poweroff.
+/usr/local/bin/cpz-save --wait
 exit 0
