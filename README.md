@@ -66,7 +66,7 @@ runs).
 | SSH (dropbear) | ✅ | over Wi-Fi or Ethernet; root password is `alpine` — change it before exposing the device |
 | Persistence across reflashes | ✅ v0.21.3 | `CPZDATA` partition covering the rest of the card, hourly `cpz-save` + boot restore. Saves `/root`, `/home/cpz` (including Files content and camera media), dropbear keys, the **whole `/etc/NetworkManager` tree**, `/var/lib/applaunch` (launcher settings + HDMI/Tailscale preferences), and `/var/lib/tailscale` (optional Tailscale node key, so a reflash does not require re-login). `flash-cpz.sh` provisions it offline; `dd`/Imager/Etcher get it from the device on first boot (one extra reboot) |
 | HDMI desktop (on demand) | ✅ v0.19.0 | `cpz-desktop start` → Sway + waybar + foot at 1080p60 in ~5 s, roughly 90 MiB with foot open; HDMI audio becomes default while running. Hotplug is consent-only (`/etc/cpz/hdmi-mode=ask`); a saved boot preference can still start it |
-| Tailscale (on demand) | ✅ v0.21.3 | **optional** on-device package (`apk add tailscale tailscale-openrc` + `tailscale up`); the launcher card appears only once the node is installed **and** logged in, and switches the tunnel on/off. The choice survives a reboot (ON re-adds the runlevel service, OFF removes it) and the node key survives a reflash |
+| Tailscale (on demand) | ✅ v0.21.3 | **optional** on-device package (`sudo apk add tailscale tailscale-openrc` + `sudo tailscale up`); the launcher card appears only once the node is installed **and** logged in, and switches the tunnel on/off. The choice survives a reboot (ON re-adds the runlevel service, OFF removes it) and the node key survives a reflash |
 | LCD HDMI lock | ✅ v0.19.0 | after 1 s the LCD shows **HDMI LOCKED** and the launcher stops reading the internal keypad; hold ESC 2 s to stop the desktop and unlock. The exit path is LCD-only; no monitor is needed once a session is up |
 | Bluetooth / IR | ⏳ | BT controller path verified; no user-facing IR app and no remote-test pass yet |
 
@@ -178,12 +178,14 @@ logged in. Nothing else on the image depends on it.
 
 ### 1. Install and enable the daemon
 
-Over SSH (root; `cpz` can prefix everything with `sudo -n`):
+Run these as the normal **`cpz`** user over SSH. Every command needs
+`sudo` (the image grants `cpz` passwordless sudo); if you log in as
+`root`, drop the `sudo`.
 
 ```sh
-apk add tailscale tailscale-openrc
-rc-update add tailscale default      # start it at boot
-rc-service tailscale start
+sudo apk add tailscale tailscale-openrc
+sudo rc-update add tailscale default      # start it at boot
+sudo rc-service tailscale start
 ```
 
 `tailscale-openrc` provides `/etc/init.d/tailscale` — the service is named
@@ -192,27 +194,27 @@ rc-service tailscale start
 `cpz-save` / reflash flow reinstalls it automatically after a reflash
 (`/cfg/pkglist.txt`).
 
-### 2. Log in (`tailscale up`)
+### 2. Log in (`sudo tailscale up`)
 
 ```sh
-tailscale up
+sudo tailscale up
 ```
 
 It prints an authentication URL. Open that URL on a phone or desktop,
 approve the device, and the command returns. Useful variants:
 
 ```sh
-tailscale up --hostname=cardputer-zero   # nicer name in the admin console
-tailscale up --ssh                       # Tailscale SSH instead of dropbear
-tailscale up --accept-routes             # use subnet routes from the tailnet
-tailscale up --advertise-exit-node       # offer this device as an exit node
+sudo tailscale up --hostname=cardputer-zero   # nicer name in the admin console
+sudo tailscale up --ssh                       # Tailscale SSH instead of dropbear
+sudo tailscale up --accept-routes             # use subnet routes from the tailnet
+sudo tailscale up --advertise-exit-node       # offer this device as an exit node
 ```
 
 Check the result:
 
 ```sh
-tailscale status        # "cardputer-zero-alpine  kkazakov@  linux  -"
-tailscale ip -4         # 100.x.y.z
+sudo tailscale status        # "cardputer-zero-alpine  kkazakov@  linux  -"
+sudo tailscale ip -4         # 100.x.y.z
 ```
 
 ### 3. Use the launcher card
@@ -239,37 +241,37 @@ address if you need to turn it back on, or schedule a re-enable before
 testing remotely:
 
 ```sh
-nohup sh -c 'sleep 120; /usr/local/bin/cpz-tailscale apply on' &
+nohup sudo -n sh -c 'sleep 120; /usr/local/bin/cpz-tailscale apply on' >/dev/null 2>&1 &
 ```
 
 ### 4. Manual control (no launcher)
 
 ```sh
-cpz-tailscale state          # on | off
-cpz-tailscale on             # write preference 1 + start + enable at boot
-cpz-tailscale off            # write preference 0 + stop + disable at boot
-cpz-tailscale apply on       # start/enable now, leave the preference alone
-cpz-tailscale apply off      # stop/disable now, leave the preference alone
-cpz-tailscale available      # exit 0 only if installed AND logged in
-cpz-tailscale boot           # re-apply the saved preference (boot hook)
+sudo cpz-tailscale state          # on | off
+sudo cpz-tailscale on             # write preference 1 + start + enable at boot
+sudo cpz-tailscale off            # write preference 0 + stop + disable at boot
+sudo cpz-tailscale apply on       # start/enable now, leave the preference alone
+sudo cpz-tailscale apply off      # stop/disable now, leave the preference alone
+sudo cpz-tailscale available      # exit 0 only if installed AND logged in
+sudo cpz-tailscale boot           # re-apply the saved preference (boot hook)
 ```
 
-`cpz-tailscale on|off` and the launcher page keep the same preference
+`sudo cpz-tailscale on|off` and the launcher page keep the same preference
 file, so mixing them is safe.
 
 ### 5. Persistence across reflashes
 
 `/var/lib/tailscale` (node key, login profile, prefs) is in `cpz-save`, so
-a card reflash keeps the node logged in — no second `tailscale up`. The
+a card reflash keeps the node logged in — no second `sudo tailscale up`. The
 package is reinstalled from `/etc/apk/world` + `/cfg/pkglist.txt` on the
 first boot, and the boot hook starts the daemon once the binary exists.
 
-Run `cpz-save` after changing anything Tailscale-related (the hourly job
-also does it):
+Run `sudo cpz-save` after changing anything Tailscale-related (the hourly
+job also does it):
 
 ```sh
-cpz-save
-tar -tzf /cfg/save.tar.gz | grep var/lib/tailscale/tailscaled.state
+sudo cpz-save
+sudo tar -tzf /cfg/save.tar.gz | grep var/lib/tailscale/tailscaled.state
 ```
 
 The archive is `0600` because it carries the node key and Wi-Fi PSKs.
@@ -278,10 +280,10 @@ The archive is `0600` because it carries the node key and Wi-Fi PSKs.
 
 | Symptom | Check |
 | --- | --- |
-| Card never appears | `cpz-tailscale available; echo $?` → must be `0`. It is `1` until both `/usr/sbin/tailscaled` + `/etc/init.d/tailscale` exist **and** `tailscaled.state` has a non-empty `_profiles` (`tailscale up` completed) |
-| `rc-service tailscaled` says "does not exist" | Wrong name — the service is `tailscale` |
-| Switch flips back immediately | `tail -f /var/log/tailscaled.log`; `rc-service tailscale status`; the launcher log is `/var/log/applaunch.log` |
-| Card appears but is Off after reflash | `cpz-save` must have run **before** the reflash; check the archive for `var/lib/tailscale/tailscaled.state` |
+| Card never appears | `sudo cpz-tailscale available; echo $?` → must be `0`. It is `1` until both `/usr/sbin/tailscaled` + `/etc/init.d/tailscale` exist **and** `tailscaled.state` has a non-empty `_profiles` (`sudo tailscale up` completed) |
+| `sudo rc-service tailscaled` says "does not exist" | Wrong name — the service is `tailscale` |
+| Switch flips back immediately | `sudo tail -f /var/log/tailscaled.log`; `sudo rc-service tailscale status`; the launcher log is `/var/log/applaunch.log` |
+| Card appears but is Off after reflash | `sudo cpz-save` must have run **before** the reflash; check the archive for `var/lib/tailscale/tailscaled.state` |
 
 ## Wi-Fi and Ethernet
 

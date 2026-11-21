@@ -179,17 +179,17 @@ flash the bigger card.
       Tailscale absent (fresh image) it must **not** appear on the home
       carousel or in Settings → Launcher. Then:
       ```sh
-      apk add tailscale tailscale-openrc
-      tailscale up                 # authenticate
+      sudo apk add tailscale tailscale-openrc
+      sudo tailscale up                 # authenticate
       ```
       Within ~20 s the **Tailscale** card appears without restarting
       `applaunch` (the home screen re-polls the availability predicate).
       Open it: the switch shows the live daemon state. ENTER toggles:
       ```sh
-      pgrep -x tailscaled              # present when On, gone when Off
-      cat /var/lib/applaunch/tailscale # 1 / 0
-      ls /etc/runlevels/default/tailscale  # link present when On, gone when Off
-      rc-service tailscale status
+      pgrep -x tailscaled                    # present when On, gone when Off
+      sudo cat /var/lib/applaunch/tailscale  # 1 / 0
+      ls /etc/runlevels/default/tailscale    # link present when On, gone when Off
+      sudo rc-service tailscale status
       ```
       Reboot with it On: it comes back by itself. Reboot with it Off: the
       daemon must not start at all (the runlevel link is removed, so
@@ -197,28 +197,28 @@ flash the bigger card.
       **Warning:** on a device reachable only over its tailnet address,
       switching Off cuts your SSH session. Keep a serial console or
       schedule a re-enable (for example
-      `nohup sh -c 'sleep 120; cpz-tailscale apply on' &` as root) before
-      testing Off remotely.
-      Manual control works too: `cpz-tailscale on|off` writes the
-      preference and applies it; `cpz-tailscale boot` re-applies it.
-      After a reflash with `flash-cpz.sh`, `cpz-save` must have archived
-      `/var/lib/tailscale`:
+      `nohup sudo -n sh -c 'sleep 120; /usr/local/bin/cpz-tailscale apply on' >/dev/null 2>&1 &`)
+      before testing Off remotely.
+      Manual control works too: `sudo cpz-tailscale on|off` writes the
+      preference and applies it; `sudo cpz-tailscale boot` re-applies it.
+      After a reflash with `flash-cpz.sh`, `sudo cpz-save` must have
+      archived `/var/lib/tailscale`:
       ```sh
-      tar -tzf /cfg/save.tar.gz | grep var/lib/tailscale/tailscaled.state
+      sudo tar -tzf /cfg/save.tar.gz | grep var/lib/tailscale/tailscaled.state
       ```
       The node comes back logged in once the apk reinstall finishes (no
-      second `tailscale up`).
+      second `sudo tailscale up`).
 - [ ] **T2i — OFF survives a reboot (v0.21.4)** [TEST]: with the tunnel
       ON, write an archive that still says ON, then switch OFF and reboot
       (or run the boot path directly):
       ```sh
       printf '0\n' > /var/lib/applaunch/tailscale
-      rc-update del tailscale default
-      /etc/local.d/cpz-restore.start      # archive still holds "1"
-      cat /var/lib/applaunch/tailscale    # must still be 0
-      /etc/local.d/cpz-tailscale-boot.start
-      pidof tailscaled                    # must print nothing
-      ls /etc/runlevels/default/tailscale # must not exist
+      sudo rc-update del tailscale default
+      sudo /etc/local.d/cpz-restore.start      # archive still holds "1"
+      sudo cat /var/lib/applaunch/tailscale    # must still be 0
+      sudo /etc/local.d/cpz-tailscale-boot.start
+      pidof tailscaled                         # must print nothing
+      ls /etc/runlevels/default/tailscale      # must not exist
       ```
       The v0.21.3 bug was the first step: `cpz-restore` copied the stale
       `1` over the live `0`. After a real reboot the same checks apply
