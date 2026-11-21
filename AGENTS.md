@@ -5,12 +5,13 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.21.1** (base repo `main`; the launcher fork is a
+Current release: **v0.21.2** (base repo `main`; the launcher fork is a
 sibling checkout in `launcher/`, branch `alpine`). v0.20.0 added Files
 and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
 startup and opens Files in `/home/cpz`; v0.21.0 makes `/cfg` (CPZDATA)
 cover the whole card on every flash route, including Windows/macOS/Etcher
-ones; v0.21.1 installs `shadow` so `passwd` works as `cpz`.
+ones; v0.21.1 installs `shadow` so `passwd` works as `cpz`; v0.21.2
+preserves root/cpz password changes across a reflash.
 
 ---
 
@@ -131,6 +132,13 @@ What survives a reflash (see `rootfs-overlay/usr/local/bin/cpz-save` /
   (launcher config, HDMI preference)
 - pass B (additive): `/etc/local.d`, `/etc/conf.d`, `/etc/apk/world`,
   NetworkManager global config not shipped by the new image
+- narrow merge (v0.21.2): only the `root` and `cpz` lines of
+  `/etc/shadow`, stored 0600 as `/cfg/shadow-users` and merged by name at
+  boot. Other accounts always come from the new image. `cpz-save` must
+  have run after the password change — the hourly job does it. This is not
+  retroactive: a password changed on an older image was never written to
+  `/cfg`, so the first v0.21.2 boot still has the build-time `alpine`
+  password; set it again and save.
 
 Only `.deb`/store-installed applications are *not* persisted (they belong
 in the image or a bundle). `cpz-save` runs hourly from cron and on demand;
@@ -209,7 +217,7 @@ complete release. The latest ZIP should also replace the loose image in
 
 ---
 
-# State (v0.21.1)
+# State (v0.21.2)
 
 ## What the image is
 
@@ -303,8 +311,12 @@ Added/fixed (all in `launcher/`):
 - `cpz` has NOPASSWD sudo, so the admin reset path is
   `sudo -n passwd cpz` (or `... root`). Do not add a shell wrapper named
   `passwd`: a script cannot be setuid, and sudo would just run the wrapper.
-- `/etc/shadow` is **not** in `cpz-save`. Password changes do not survive
-  a reflash — the image's `alpine` passwords come back.
+- `/etc/shadow` is **not** archived wholesale. v0.21.2 saves only the
+  `root` and `cpz` lines to a 0600 `/cfg/shadow-users`; `cpz-restore.start`
+  merges them by name and leaves every other account to the new image.
+  Do not "simplify" this to `etc/shadow` in `PASS_A`: that resurrects
+  stale users and lock/expiry state from an older image. Test the merge
+  with a fake `/cfg` — the image itself is aarch64 and cannot run here.
 
 ### OpenRC / service
 - **start-stop-daemon switches to `command_user` BEFORE opening
@@ -395,7 +407,9 @@ Added/fixed (all in `launcher/`):
   empty staging dir, then merge allow-listed paths by hand; pass A
   overwrites, pass B never clobbers an image file.
 - The archive holds Wi-Fi PSKs: it is created `0600` (umask 077). Do not
-  "simplify" that away, and never widen `/cfg`.
+  "simplify" that away, and never widen `/cfg`. `/cfg/shadow-users`
+  (v0.21.2) holds password hashes; 0600 is an on-device permission, not
+  encryption — a removed card exposes it just like `/etc/shadow`.
 - A hardcoded member list plus `tar ... || fail` means one missing
   optional path discards the *entire* snapshot — and the hourly job sends
   output to `/dev/null`, so persistence dies silently. Filter members to

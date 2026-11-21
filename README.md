@@ -3,7 +3,7 @@
 An extremely light, purpose-built **Alpine Linux** operating system for the
 **M5Stack CardputerZero** (Raspberry Pi CM0 / RP3A0, Broadcom BCM2837).
 
-**Status: v0.21.1.** The launcher face of the stock M5 image, on Alpine:
+**Status: v0.21.2.** The launcher face of the stock M5 image, on Alpine:
 the APPLaunch UI (carousel, settings, Files, Camera, calculator, CLI
 terminal) owns the internal LCD and boots straight into it. HDMI/Sway is
 opt-in and stays dark until you start it. The v0.19.0 Sway keyboard and
@@ -12,14 +12,15 @@ Camera as default apps (both native musl builds), v0.20.1 fixes
 MIPI-CSI camera startup and opens Files in `/home/cpz`, v0.21.0 makes
 the `CPZDATA` persistence partition cover the whole card on **every** flash
 route — `dd`, Imager and Etcher now get `/cfg` too, from the device, after
-one extra reboot on a brand-new card — and v0.21.1 installs `shadow` so
-`passwd` works as `cpz` (Alpine's busybox applet is not setuid). Their
-content lives under `/home/cpz`, so reflashes preserve it. The device test
-checklist is in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
+one extra reboot on a brand-new card — v0.21.1 installs `shadow` so
+`passwd` works as `cpz` (Alpine's busybox applet is not setuid), and
+v0.21.2 preserves root/cpz password changes across a reflash. Files and
+Camera content lives under `/home/cpz`, so reflashes preserve it. The
+device test checklist is in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
 **Latest published release:** [CPZ-Alpine v0.20.1](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.20.1).
 Download the ZIP (image + SHA-256 + Linux/Windows/macOS flashers + README),
-not the loose image. v0.21.1 is built here and needs the hardware pass
+not the loose image. v0.21.2 is built here and needs the hardware pass
 before it is published — see [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
 | Subsystem | State | Notes |
@@ -235,9 +236,15 @@ is grown on the next boot.
   password: `sudo -n passwd cpz` or `sudo -n passwd root` — cpz has
   NOPASSWD sudo. v0.21.1 ships shadow's setuid `/usr/bin/passwd`; the
   busybox applet in earlier images failed with
-  `passwd: must be suid to work properly`. Password hashes live in
-  `/etc/shadow`, which is **not** part of the `/cfg` snapshot: a reflash
-  restores the build-time passwords (`alpine`).
+  `passwd: must be suid to work properly`. Since v0.21.2, `cpz-save`
+  stores only the root and cpz lines from `/etc/shadow` in a 0600
+  `/cfg/shadow-users` file and `cpz-restore.start` merges them by name at
+  boot, so those two password changes survive a reflash. Other accounts
+  always come from the new image. Run `cpz-save` after changing a
+  password (the hourly job also does it) or the last snapshot wins. This
+  starts with v0.21.2: a password changed on an older image was never
+  written to `/cfg`, so the first reflash to v0.21.2 still boots with
+  `alpine` — set it again after boot, then save.
 - `rc-service applaunch status`, `/var/log/applaunch.log` for the
   launcher; `cpz-desktop status` for the HDMI session.
 - `/etc/local.d/*.start` scripts and the launcher sources document their

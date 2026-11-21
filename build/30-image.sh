@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.1
+VER=0.21.2
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -678,6 +678,14 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'umask 077' /mnt/rootfs/usr/local/bin/cpz-save \
         && echo "OK: PSK-bearing archive is created 0600" \
         || echo "FAIL: save archive is world-readable (leaks Wi-Fi PSKs)"
+    # v0.21.2: password changes are saved to a separate root-only file and
+    # merged by name at boot. The actual merge is exercised by the
+    # container simulation (fake /cfg); here only the shipped hooks are
+    # checked, because the image is aarch64 and cannot run on the builder.
+    grep -q 'shadow-users' /mnt/rootfs/usr/local/bin/cpz-save \
+        && grep -q 'shadow-users' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && echo "OK: root/cpz password entries saved to /cfg and merged at boot" \
+        || echo "FAIL: password persistence hook missing (shadow-users)"
     # v0.21.0: /cfg card growth (cpz-grow.start) — the device-side half of
     # the persistence story: a card written by dd/Imager/Etcher/Windows/macOS
     # gets its CPZDATA partition from the device itself. The tooling it needs

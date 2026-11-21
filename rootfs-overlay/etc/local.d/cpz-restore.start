@@ -50,6 +50,12 @@
 # ~/Videos/Camera and ~/.config/cardputerzero). The pass A home/cpz merge
 # below restores all of it, with archive-wins semantics, after the new
 # image's empty home skeleton has been laid down.
+#
+# v0.21.2: root/cpz password changes are restored from /cfg/shadow-users
+# (written by cpz-save) by replacing just those two /etc/shadow lines.
+# This is a name-keyed merge after pass A/B, not a whole-file restore:
+# users the new image ships (or drops) stay under the image's control,
+# and a malformed/absent file leaves the image's passwords in place.
 
 CFG=/cfg
 A=$CFG/save.tar.gz
@@ -111,6 +117,42 @@ for p in $PASS_B; do
             sh -c 'd="/${1#./}"; [ -e "$d" ] || ln -s "$(readlink "$1")" "$d"' sh {} \; 2>/dev/null
     )
 done
+
+# v0.21.2: merge the saved root/cpz password lines into the image's
+# /etc/shadow. Only 9-field lines with a real hash/lock marker are
+# accepted; other accounts are left exactly as the image ships them.
+# Write a temp file (0600 root:root) and rename, so a crash cannot leave a
+# half-written shadow file and PAM never sees a partial line.
+SH=$CFG/shadow-users
+if [ -f "$SH" ] && [ ! -L "$SH" ] && [ -s "$SH" ] && [ -f /etc/shadow ]; then
+    TMP=$(mktemp /etc/shadow.cpz.XXXXXX) || TMP=
+    if [ -n "$TMP" ]; then
+        chmod 600 "$TMP"
+        if awk -F: '
+            NR == FNR {
+                if (NF == 9 && ($1 == "root" || $1 == "cpz") && $2 ~ /^[$!*]/)
+                    saved[$1] = $0
+                next
+            }
+            {
+                if ($1 in saved) { print saved[$1]; next }
+                print
+            }
+        ' "$SH" /etc/shadow > "$TMP" && [ -s "$TMP" ]; then
+            chown 0:0 "$TMP" 2>/dev/null || true
+            chmod 600 "$TMP"
+            if mv "$TMP" /etc/shadow; then
+                logger -t cpz-restore "restored root/cpz password hashes" 2>/dev/null || true
+            else
+                rm -f "$TMP"
+                logger -t cpz-restore "shadow rename failed, keeping image passwords" 2>/dev/null || true
+            fi
+        else
+            rm -f "$TMP"
+            logger -t cpz-restore "shadow merge failed, keeping image passwords" 2>/dev/null || true
+        fi
+    fi
+fi
 
 rm -rf "$STAGE"
 

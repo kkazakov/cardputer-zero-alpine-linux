@@ -1,16 +1,17 @@
-# FLASH AND TEST — CPZ-Alpine 0.21.1
+# FLASH AND TEST — CPZ-Alpine 0.21.2
 
 Built offline from M5's own stock image (Phase-A kernel graft). Core
 hardware support is field-verified through v0.19.0; v0.20.0 added the
 Files browser and Camera as default launcher applications, v0.20.1 fixes
 MIPI-CSI camera startup and opens Files in `/home/cpz`, v0.21.0 makes
 the `CPZDATA` persistence partition cover the rest of the card on every
-flash route, and v0.21.1 installs `shadow` so `passwd` works as `cpz`.
-Items marked [TEST] below still deserve one device pass.
+flash route, v0.21.1 installs `shadow` so `passwd` works as `cpz`, and
+v0.21.2 preserves root/cpz password changes across a reflash. Items
+marked [TEST] below still deserve one device pass.
 
 ## What you're flashing
 
-- `images/cpz-alpine-0.21.1.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
+- `images/cpz-alpine-0.21.2.img.gz` (+ `.sha256`) — 1.8 GiB raw image:
   FAT32 boot (256 MiB) + ext4 root (1.5 GiB), MBR disk id `0x10c0ffee`
 - Base: Alpine Linux 3.24 aarch64, musl + BusyBox + OpenRC, **no systemd**
 - Kernel: M5 stock `6.18.33+rpt-rpi-v8` (bit-exact from the factory image,
@@ -26,7 +27,7 @@ The public download is the release ZIP:
 It contains the image, checksum, README and Linux/Windows/macOS flashers.
 
 ```sh
-sha256sum -c cpz-alpine-0.21.1.img.gz.sha256     # verify download
+sha256sum -c cpz-alpine-0.21.2.img.gz.sha256     # verify download
 # /dev/sdX = the LAB microSD card (NOT the stock card, NOT a disk!)
 lsblk                                          # triple-check sizes
 sudo ./flash-cpz.sh /dev/sdX                   # preserves /cfg on reflashes
@@ -46,7 +47,7 @@ mounted, so the card must reboot once before the filesystem can be
 created). Nothing else is different:
 
 ```sh
-gunzip -c cpz-alpine-0.21.1.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
+gunzip -c cpz-alpine-0.21.2.img.gz | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 ```
 
@@ -159,6 +160,20 @@ flash the bigger card.
       ```
       Reboot twice more: it must stay silent and never reboot again. A
       reflash with `flash-cpz.sh` afterwards must keep `/cfg/save.tar.gz`.
+- [ ] **T2g — password persistence (v0.21.2)** [TEST]: as `cpz`, run
+      `passwd` and change the password. Then `sudo -n cpz-save` and check:
+      ```sh
+      stat -c '%a %U:%G' /cfg/shadow-users    # 600 root:root
+      cut -d: -f1 /cfg/shadow-users           # exactly root, cpz
+      ```
+      Reflash the same card with `build/flash-cpz.sh` (preserves `/cfg`).
+      After boot the new cpz password must work; a password change made
+      without a following `cpz-save` is lost. Accounts other than root/cpz
+      always come from the new image — `/etc/shadow` is never restored
+      wholesale. **Upgrading from ≤v0.21.1:** those images never wrote
+      `shadow-users`, so the first v0.21.2 boot still has the build-time
+      `alpine` password even if you had changed it before the reflash;
+      set it again, then save.
 - [ ] **T3 — serial rescue**: the normal image has **no USB-C serial
       gadget** (dwc2 is host-only for Ethernet/USB-A). Use the 14-pin
       expansion UART at 115200, or SSH. If the LCD is dark and you have
@@ -175,12 +190,13 @@ flash the bigger card.
       retired for host mode; Wi-Fi/Ethernet SSH is the remote path.)
 - [ ] **T6 — SSH**: from your LAN: `ssh root@<ip>` (password `alpine`).
       Key-only lockdown comes later (S09) — don't expose this image.
-- [ ] **T6b — passwd (v0.21.1)**: as `cpz` (CLI app), `passwd` asks for
+- [ ] **T6b — passwd (v0.21.2)**: as `cpz` (CLI app), `passwd` asks for
       the current password and changes it — **not** `passwd: must be suid
       to work properly`. `stat -c '%a %U:%G' /usr/bin/passwd` must print
       `4755 root:root`. Root reset path: `sudo -n passwd cpz` (cpz has
-      NOPASSWD sudo). The hash lives in `/etc/shadow`, which is not in
-      `/cfg` — a reflash restores the build-time `alpine` password.
+      NOPASSWD sudo). After changing a password, run `cpz-save` (or wait
+      for the hourly job); v0.21.2 stores only the `root`/`cpz` lines in
+      `/cfg/shadow-users` for the next reflash.
 - [ ] **T7 — Wi-Fi chips present**: `ip a` shows wlan0 (unconfigured —
       see below to join a network). `iw dev wlan0 scan | grep SSID` should
       list networks.

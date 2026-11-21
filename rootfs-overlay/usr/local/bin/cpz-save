@@ -8,7 +8,8 @@
 # /etc/local.d and /etc/conf.d, the launcher's state
 # (/var/lib/applaunch), the apk world file, plus the installed-package
 # list (/cfg/pkglist.txt — re-installed automatically at the next boot
-# after a reflash).
+# after a reflash). Since v0.21.2 the root/cpz password lines also go to
+# /cfg/shadow-users (see the v0.21.2 block below).
 #
 # v0.20.1 Files/Camera: the Files browser opens /home/cpz itself and
 # Camera writes stills/clips to ~/Pictures/DCIM/Camera and ~/Videos/Camera,
@@ -35,8 +36,17 @@
 # the archive still validates ("file changed as we read it" is normal for
 # a live /root).
 #
+# v0.21.2: password changes for root and cpz survive a reflash. /etc/shadow
+# as a whole is deliberately NOT archived (that would resurrect stale
+# system users and lock/expiry states from an older image); only the root
+# and cpz lines are written to /cfg/shadow-users, 0600 like save.tar.gz.
+# cpz-restore.start merges exactly those two entries and leaves every other
+# account from the new image untouched.
+#
 # The archive holds Wi-Fi PSKs, so it is created 0600 (umask 077); /cfg
 # is readable by the cpz user and an 0644 tarball leaked every key.
+# /cfg/shadow-users holds password hashes: 0600 is an on-device permission,
+# not encryption — anyone who can mount the card offline can read it.
 
 CFG=/cfg
 
@@ -78,6 +88,22 @@ if ! tar -czpf "$T" -C / "$@" 2>/dev/null; then
 fi
 chmod 600 "$T"
 mv "$T" $CFG/save.tar.gz
+
+# v0.21.2: preserve only the two human accounts' password entries. The
+# file is a 0600 sibling of save.tar.gz; restoring it is a name-keyed
+# merge, so a future image can add or remove other users independently.
+# Keep the old file when the write/selection fails: losing a save is worse
+# than keeping yesterday's hash.
+SH=$CFG/shadow-users.new
+rm -f "$SH"
+awk -F: 'NF == 9 && ($1 == "root" || $1 == "cpz")' /etc/shadow >"$SH" 2>/dev/null
+if [ -s "$SH" ]; then
+    chmod 600 "$SH"
+    mv "$SH" "$CFG/shadow-users" ||
+        echo "cpz-save: warning: could not write $CFG/shadow-users" >&2
+else
+    rm -f "$SH"
+fi
 
 apk info -q > $CFG/pkglist.txt 2>/dev/null
 sync
