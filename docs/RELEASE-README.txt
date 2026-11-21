@@ -1,4 +1,4 @@
-CPZ-Alpine @VERSION@ - first flashable release
+CPZ-Alpine @VERSION@ - flashable release
 ================================================
 
 This folder contains everything needed to write CPZ-Alpine to a microSD

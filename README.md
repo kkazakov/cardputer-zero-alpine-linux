@@ -3,7 +3,7 @@
 An extremely light, purpose-built **Alpine Linux** operating system for the
 **M5Stack CardputerZero** (Raspberry Pi CM0 / RP3A0, Broadcom BCM2837).
 
-**Status: v0.21.7.** The launcher face of the stock M5 image, on Alpine:
+**Status: v0.22.0.** The launcher face of the stock M5 image, on Alpine:
 the APPLaunch UI (carousel, settings, Files, Camera, calculator, CLI
 terminal) owns the internal LCD and boots straight into it. HDMI/Sway is
 opt-in and stays dark until you start it. The v0.19.0 Sway keyboard and
@@ -17,25 +17,32 @@ one extra reboot on a brand-new card — v0.21.1 installs `shadow` so
 preserves root/cpz password changes across a reflash, v0.21.3 adds
 the optional **Tailscale** on/off card (hidden until the package is
 installed and logged in) and keeps the Tailscale node logged in across a
-reflash, v0.21.4 fixes the boot restore rolling the launcher state
+reflash, and v0.21.4 fixes the boot restore rolling the launcher state
 back to the last hourly snapshot (an OFF Tailscale switch no longer comes
-back ON after a reboot), and v0.21.5 fixes `flash-cpz.sh` on
-`mmcblk`/`nvme` card readers (it looked for `/dev/mmcblk03` instead of
-`/dev/mmcblk0p3` and skipped the CPZDATA format), v0.21.6 makes
-persistence keep up with setup (`cpz-save` every 5 minutes, on
-NetworkManager connect, after a Tailscale toggle and at shutdown) and
-stops the flasher formatting a dirty-but-valid CPZDATA, and v0.21.7
-saves within ~5 s of a config change and keeps the previous archive for
-recovery. v0.21.8 makes that watcher event-driven (busybox `inotifyd` on
-the config files and their parent directories) with a 60 s poll fallback,
-so a change snapshots instantly and idle CPU drops to roughly zero. Files and
-Camera content lives under `/home/cpz`, so reflashes preserve it. The
-device test checklist is in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
+back ON after a reboot).
 
-**Latest published release:** [CPZ-Alpine v0.21.7](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.21.7).
-Download the ZIP (image + SHA-256 + Linux/Windows/macOS flashers + README),
-not the loose image. v0.21.7 has the hardware pass recorded in
+**v0.22.0 is the stable consolidation of the persistence work.** The
+restore now runs in the **boot runlevel, before `applaunch`, `dropbear`
+and `networkmanager`**, so the saved settings, host keys and Wi-Fi
+profiles are in place when those services start. The flasher backs up
+`/cfg` before writing (including `save.tar.gz`, `.prev`, `shadow-users`,
+`world`, `repositories`, `ntp`, `timezone`, `apk/` and `apk-keys/`),
+repairs a dirty ext4 instead of formatting it, writes the snapshot back
+after the flash and **verifies the byte count**, aborting on a mismatch.
+`cpz-save` runs on a 5-minute cron, on NetworkManager connect, on config
+changes (inotify watcher), and at shutdown. Settings that used to reset
+now persist: brightness, speaker volume, network time, manual time and the
+timezone. Packages survive too: explicit `apk` packages, custom
+repositories/keys and local `.apk` files are reinstalled after Wi-Fi comes
+up, with a launcher toast. Files and Camera content lives under
+`/home/cpz`, so reflashes preserve it. The device test checklist is in
 [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
+
+**Latest published release:** [CPZ-Alpine v0.22.0](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.22.0).
+Download the ZIP (image + SHA-256 + Linux/Windows/macOS flashers + README),
+not the loose image. **All older releases were removed** — they predate
+the persistence fixes in v0.22.0 and can lose settings, packages or the
+Wi-Fi/Tailscale state on a reflash.
 
 ## Screenshots
 
@@ -64,7 +71,7 @@ runs).
 | Launcher: Calculator | ✅ | `M5CardputerZero-Calculator` built from the same launcher checkout |
 | Launcher: Files | ✅ v0.20.1 | native musl build of CardputerZero/Files (`build/26-apps.sh`); starts in `/home/cpz`, previews text/images/audio/video (`ffmpeg` for video), enabled by default |
 | Launcher: Camera | ✅ v0.20.1 | native musl build of Camera 1.0.2, pinned to the image's libcamera 0.7.1 ABI; MIPI-CSI via RPi VC4 IPA + tuning, stills in `~/Pictures/DCIM/Camera`, clips in `~/Videos/Camera`, gallery built in |
-| Launcher: Settings | ✅ | Wi-Fi/Ethernet, Bluetooth, brightness/volume, battery + BQ calibrate, Date & Time; RPi-OS-only updater/ADB pages hidden |
+| Launcher: Settings | ✅ v0.22.0 | Wi-Fi/Ethernet, Bluetooth, brightness, speaker volume, battery + BQ calibrate, Date & Time (manual time + network time) and timezone; RPi-OS-only updater/ADB pages hidden |
 | Launcher: CLI terminal | ✅ | interactive bash over a PTY, rendered in LVGL |
 | Console | ✅ | **14-pin expansion UART** at 115200 + SSH; no VT getty and no HDMI kernel console. HDMI stays dark until the desktop starts. The USB-C serial gadget is retired (dwc2 is host-only for Ethernet/USB-A) |
 | Keyboard (46-key + SYM/FN) | ✅ v0.19.0 | keymap rebuilt from measured keycap legends: console `cpz-sym-keymap.map`, launcher `tca8418_keypad_m5stack_keymap.map`. In Sway the internal keypad gets Alt-as-Super and the `cpz:sym` XKB option; an external USB keyboard keeps real Alt/Super and US layout |
@@ -73,9 +80,11 @@ runs).
 | Wi-Fi (BCM43439) | ✅ v0.19.1 | NetworkManager owns wlan0; Settings → Wi-Fi can toggle the radio, scan, join WPA2, forget, and reconnect. `nmcli` runs through `/usr/local/bin/cpz-nmcli` (root via passwordless sudo) because there is no polkit on the image. Credentials may also be baked as an NM keyfile |
 | Ethernet (SR9900A) | ✅ v0.12.2 | mainline r8152 ID patch, dwc2 host mode; field-verified DHCP + traffic |
 | SSH (dropbear) | ✅ | over Wi-Fi or Ethernet; root password is `alpine` — change it before exposing the device |
-| Persistence across reflashes | ✅ v0.21.6 | `CPZDATA` partition covering the rest of the card, `cpz-save` every 5 min + on NetworkManager connect + after a Tailscale toggle + at shutdown, then boot restore. Saves `/root`, `/home/cpz` (including Files content and camera media), dropbear keys, the **whole `/etc/NetworkManager` tree**, `/var/lib/applaunch` (launcher settings + HDMI/Tailscale preferences), and `/var/lib/tailscale` (optional Tailscale node key, so a reflash does not require re-login). `flash-cpz.sh` provisions it offline; `dd`/Imager/Etcher get it from the device on first boot (one extra reboot) |
+| Persistence across reflashes | ✅ v0.22.0 | `CPZDATA` partition covering the rest of the card; `cpz-save` snapshots on a 5-minute cron, on NetworkManager connect, on config changes (inotify) and at shutdown, and `cpz-restore` runs in the **boot runlevel before the launcher/dropbear/NetworkManager** so the saved state is loaded at start. Saves `/root`, `/home/cpz` (Files + camera media + app config), dropbear host keys, the **whole `/etc/NetworkManager` tree**, `/var/lib/applaunch`, `/var/lib/tailscale`, `/cfg/world`, `repositories`, `apk-keys/`, `apk/`, `ntp` and `timezone`. `flash-cpz.sh` repairs (never silently formats) the ext4, backs it up to `cpz-cfg-backup-<time>/` and verifies the write-back |
+| Package persistence | ✅ v0.22.0 | explicit packages (`/cfg/world`), custom repositories/keys and local `.apk` files (`sudo cpz-apk add`) are reinstalled after Wi-Fi connects — only the missing packages — with a launcher “Installing packages…” toast |
+| Timezone | ✅ v0.22.0 | `sudo cpz-timezone set <Region>/<City>` (`status`/`list` too); saved to `/cfg/timezone` and re-applied by the boot restore |
 | HDMI desktop (on demand) | ✅ v0.19.0 | `cpz-desktop start` → Sway + waybar + foot at 1080p60 in ~5 s, roughly 90 MiB with foot open; HDMI audio becomes default while running. Hotplug is consent-only (`/etc/cpz/hdmi-mode=ask`); a saved boot preference can still start it |
-| Tailscale (on demand) | ✅ v0.21.3 | **optional** on-device package (`sudo apk add tailscale tailscale-openrc` + `sudo tailscale up`); the launcher card appears only once the node is installed **and** logged in, and switches the tunnel on/off. The choice survives a reboot (ON re-adds the runlevel service, OFF removes it) and the node key survives a reflash |
+| Tailscale (on demand) | ✅ v0.22.0 | **optional** on-device package (`sudo apk add tailscale tailscale-openrc` + `sudo tailscale up`); the launcher card appears only once the node is installed **and** logged in, and switches the tunnel on/off. The package and node key are reinstalled/restored after a reflash; the choice survives a reboot (ON re-adds the runlevel service, OFF removes it) |
 | LCD HDMI lock | ✅ v0.19.0 | after 1 s the LCD shows **HDMI LOCKED** and the launcher stops reading the internal keypad; hold ESC 2 s to stop the desktop and unlock. The exit path is LCD-only; no monitor is needed once a session is up |
 | Bluetooth / IR | ⏳ | BT controller path verified; no user-facing IR app and no remote-test pass yet |
 
@@ -362,24 +371,25 @@ Pass the **whole disk** (`/dev/sdb`, `/dev/mmcblk0`), never a partition
 Writes the fixed 1.8 GiB image (256 MiB FAT boot + 1.5 GiB ext4 root),
 then creates the **CPZDATA** partition at the fixed 4 GiB offset up to the
 end of the card, formats it only when it is missing/corrupt, and grows its
-ext4 filesystem to the partition. On the device, `cpz-save` snapshots
-`/root`, `/home/cpz` (the Files home tree,
-`~/Pictures/DCIM/Camera` and `~/Videos/Camera`), dropbear keys,
-`/etc/wpa_supplicant`, `/etc/hostname`, `/etc/hosts`, the full NetworkManager
-config tree, `/var/lib/applaunch`, and additive `/etc/local.d`, `/etc/conf.d`,
-and `/etc/apk/world` into `/cfg`; every boot restores them
-(`cpz-restore.start`). Since v0.21.7 a small watcher (`cpz-state-watch`)
-saved within ~5 s of a password/SSH/NM/Tailscale/launcher change; since
-v0.21.8 it is event-driven — busybox `inotifyd` on the config files and
-their parent directories fires `cpz-save` the instant something changes,
-with a 60 s poll as the fallback for an inotify queue overflow (`o`) or a
-lost watch (`x`) after an atomic rename. `cpz-save` keeps the previous
-archive as `/cfg/save.tar.gz.prev`, which
-the restore falls back to if the current one is unreadable. The 5-minute
-cron, NetworkManager connect, Tailscale toggle and shutdown hooks remain
-as backstops. Pulling the card in the middle of a save can still lose
-that save; `sudo cpz-save` immediately before removing the card is the
-safe path.
+ext4 filesystem to the partition. Before writing, it backs up the existing
+`/cfg` into `cpz-cfg-backup-<time>/`, repairs a dirty ext4 instead of
+formatting it, and writes the pre-flash snapshot back afterwards, verifying
+the byte count. On the device, `cpz-save` snapshots `/root`, `/home/cpz`
+(the Files home tree, `~/Pictures/DCIM/Camera`, `~/Videos/Camera` and the
+app config), dropbear host keys, `/etc/wpa_supplicant`, `/etc/hostname`,
+`/etc/hosts`, the full NetworkManager config tree, `/var/lib/applaunch`,
+`/var/lib/tailscale`, `/cfg/world`, `repositories`, `apk-keys/`, `apk/`,
+`ntp` and `timezone`; every boot restores them **in the boot runlevel,
+before the launcher, dropbear and NetworkManager start** (`cpz-restore`).
+The `cpz-state-watch` watcher is event-driven (busybox `inotifyd` on the
+config files and their parent directories) with a 60 s poll fallback for an
+inotify queue overflow (`o`) or a lost watch (`x`) after an atomic rename,
+so a settings/password/Wi-Fi change triggers `cpz-save` immediately.
+`cpz-save` keeps the previous archive as `/cfg/save.tar.gz.prev`, which the
+restore falls back to if the current one is unreadable. The 5-minute cron,
+NetworkManager connect and shutdown hooks remain as backstops. Pulling the
+card in the middle of a save can still lose that save; `sudo cpz-save`
+immediately before removing the card is the safe path.
 
 **`dd` / Raspberry Pi Imager / balenaEtcher also work now.** They write only
 p1/p2; on the first boot `cpz-grow.start` appends the CPZDATA entry to the
@@ -409,7 +419,7 @@ is grown on the next boot.
   `/cfg/shadow-users` file and `cpz-restore.start` merges them by name at
   boot, so those two password changes survive a reflash. Other accounts
   always come from the new image. Run `cpz-save` after changing a
-  password (the hourly job also does it) or the last snapshot wins. This
+  password (the 5-minute cron also does it) or the last snapshot wins. This
   starts with v0.21.2: a password changed on an older image was never
   written to `/cfg`, so the first reflash to v0.21.2 still boots with
   `alpine` — set it again after boot, then save.
