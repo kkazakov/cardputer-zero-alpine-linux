@@ -1,0 +1,21 @@
+#!/bin/sh
+# /etc/NetworkManager/dispatcher.d/90-cpz-save — snapshot when a connection
+# comes up (or goes down).
+#
+# v0.21.6: joining a Wi-Fi network writes an NM keyfile with the PSK. The
+# 5-minute cron would eventually save it, but a user who flashes a card,
+# joins Wi-Fi and immediately reflashes used to lose the profile (and every
+# other setting from that session). This hook captures it within seconds.
+#
+# NM calls: $1 = interface, $2 = action. Run cpz-save in the background so
+# NetworkManager's dispatcher timeout is never hit; cpz-save's own lock
+# makes overlapping triggers harmless.
+
+case "${2:-}" in
+    up|down) ;;
+    *) exit 0 ;;
+esac
+
+[ -x /usr/local/bin/cpz-save ] || exit 0
+/usr/local/bin/cpz-save >/dev/null 2>&1 &
+exit 0

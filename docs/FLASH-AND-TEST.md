@@ -228,6 +228,29 @@ flash the bigger card.
       must still restore the saved value, because the image ships an empty
       `/var/lib/applaunch` — that case is the only one where the archive
       is copied.
+- [ ] **T2j — setup then reflash keeps everything (v0.21.6)** [TEST]:
+      this is the reported regression. On a freshly flashed card:
+      1. join Wi-Fi, `sudo apk add tailscale tailscale-openrc`,
+         `sudo tailscale up`, and set a password with `passwd`;
+      2. confirm a save happened **without** a manual command:
+         ```sh
+         sudo ls -l /cfg/save.tar.gz        # mtime within the last 5 min
+         logread | grep -E 'cpz-save|dispatcher' | tail
+         sudo tar -tzf /cfg/save.tar.gz | grep -E \
+           'shadow-users$|root/.ssh|NetworkManager/system-connections|var/lib/tailscale/tailscaled.state'
+         ```
+         The NM connect hook should have saved within seconds of joining;
+         the 5-minute cron is the fallback;
+      3. `sudo poweroff` (a clean shutdown — the `cpz-save.stop` hook
+         runs), move the card to the reader and reflash with
+         `flash-cpz.sh`;
+      4. boot: the password works, `/root/.ssh/authorized_keys` is back,
+         Wi-Fi rejoins by itself, `sudo cpz-tailscale state` is `on`, and
+         `/var/lib/applaunch/tailscale` kept its value.
+      A **dirty** `/cfg` (unclean shutdown) must be repaired, not wiped:
+      the flasher prints `CPZDATA needs a journal replay/repair —
+      repairing, NOT formatting`. Pulling the card while running is still
+      a loss of anything newer than the last 5-minute snapshot.
 - [ ] **T3 — serial rescue**: the normal image has **no USB-C serial
       gadget** (dwc2 is host-only for Ethernet/USB-A). Use the 14-pin
       expansion UART at 115200, or SSH. If the LCD is dark and you have

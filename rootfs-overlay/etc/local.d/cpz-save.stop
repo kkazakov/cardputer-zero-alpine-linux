@@ -1,0 +1,16 @@
+#!/bin/sh
+# /etc/local.d/cpz-save.stop — final snapshot before shutdown/reboot.
+#
+# OpenRC's `local` service runs every executable /etc/local.d/*.stop when it
+# stops, which is late enough that /cfg is still mounted and the launcher /
+# NetworkManager / Tailscale files are on disk, but before the filesystems
+# go away.
+#
+# v0.21.6: without this, a setup session that ended in a poweroff + reflash
+# lost everything newer than the last 5-minute snapshot. The 5-minute cron,
+# the NetworkManager dispatcher and the launcher's Tailscale toggle also
+# call cpz-save; cpz-save serializes them with /run/cpz-save.lock.
+
+[ -x /usr/local/bin/cpz-save ] || exit 0
+/usr/local/bin/cpz-save
+exit 0

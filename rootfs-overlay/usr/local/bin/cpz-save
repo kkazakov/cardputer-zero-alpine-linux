@@ -58,13 +58,25 @@
 
 CFG=/cfg
 
+# v0.21.6: several triggers can overlap (5-minute cron, NetworkManager
+# dispatcher on connect, the shutdown hook, the launcher's Tailscale toggle).
+# Two concurrent runs both write save.tar.gz.new and mv it into place, so
+# serialize them: the loser exits immediately, the winner's snapshot is
+# complete. The lock lives on tmpfs and disappears at boot.
+LOCK=/run/cpz-save.lock
+if ! mkdir "$LOCK" 2>/dev/null; then
+    exit 0
+fi
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT INT TERM
+
 if ! mountpoint $CFG >/dev/null 2>&1; then
     mkdir -p $CFG
     [ -b /dev/mmcblk0p3 ] && mount -t ext4 -o rw /dev/mmcblk0p3 $CFG 2>/dev/null
 fi
 
 mountpoint $CFG >/dev/null 2>&1 ||
-    { echo "cpz-save: no /cfg partition (flash with flash-cpz.sh first)" >&2
+    { logger -t cpz-save "no /cfg partition — nothing saved (flash with flash-cpz.sh)" 2>/dev/null
+      echo "cpz-save: no /cfg partition (flash with flash-cpz.sh first)" >&2
       exit 1; }
 
 T=$CFG/save.tar.gz.new

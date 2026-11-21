@@ -125,6 +125,16 @@ if [ ! -b "$PART" ]; then
 fi
 
 echo "== checking the data filesystem =="
+PTYPE=
+command -v blkid >/dev/null 2>&1 && PTYPE=$(blkid -o value -s TYPE "$PART" 2>/dev/null || true)
+if [ "$PTYPE" = "ext4" ] && ! fsck.ext4 -n "$PART" >/dev/null 2>&1; then
+    # v0.21.6: a dirty journal is NOT corruption. `fsck -n` cannot replay
+    # it and returns non-zero; the old code read that as "format", so a
+    # reflash after an unclean shutdown destroyed a perfectly good /cfg
+    # (field report: Wi-Fi/Tailscale/passwords/SSH all reset). Repair it.
+    echo "CPZDATA needs a journal replay/repair — repairing, NOT formatting"
+    e2fsck -f -y "$PART" >/dev/null 2>&1 || true
+fi
 if fsck.ext4 -n "$PART" >/dev/null 2>&1; then
     echo "CPZDATA intact — your data survives this flash."
 else

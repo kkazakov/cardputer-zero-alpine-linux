@@ -5,7 +5,7 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.21.5** (base repo `main`; the launcher fork is a
+Current release: **v0.21.6** (base repo `main`; the launcher fork is a
 sibling checkout in `launcher/`, branch `alpine`). v0.20.0 added Files
 and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
 startup and opens Files in `/home/cpz`; v0.21.0 makes `/cfg` (CPZDATA)
@@ -18,7 +18,9 @@ from rolling `/var/lib/applaunch` back to the last hourly snapshot, so an
 OFF Tailscale/HDMI switch stays off after a reboot; v0.21.5 fixes
 `flash-cpz.sh` on `mmcblk`/`nvme` card readers (it looked for
 `/dev/mmcblk03` instead of `/dev/mmcblk0p3` and skipped the CPZDATA
-format).
+format); v0.21.6 makes persistence keep up with setup (5-minute cron,
+NetworkManager connect, Tailscale toggle, shutdown) and stops the flasher
+from formatting a dirty-but-valid `CPZDATA`.
 
 ---
 
@@ -154,8 +156,10 @@ What survives a reflash (see `rootfs-overlay/usr/local/bin/cpz-save` /
   password; set it again and save.
 
 Only `.deb`/store-installed applications are *not* persisted (they belong
-in the image or a bundle). `cpz-save` runs hourly from cron and on demand;
-a profile/config change made after the last save is lost on reflash.
+in the image or a bundle). Since v0.21.6 `cpz-save` runs every 5 minutes,
+on a NetworkManager connect, after a Tailscale toggle and at shutdown;
+before that it was hourly, so a setup session followed by a reflash lost
+everything newer than the last run.
 
 v0.19.0 note: the restore was silently broken until then — see the
 Persistence trap below. "It's in the save list" is not proof it comes
@@ -230,7 +234,7 @@ complete release. The latest ZIP should also replace the loose image in
 
 ---
 
-# State (v0.21.5)
+# State (v0.21.6)
 
 ## What the image is
 
@@ -512,6 +516,22 @@ Added/fixed (all in `launcher/`):
   test it by only grepping the script: write `0` to the live preference,
   run `cpz-restore.start` with an archive that holds `1`, and check the
   live file is still `0`.
+- **v0.21.6: the save triggers are part of persistence, not a nicety.**
+  `cpz-save` used to run only hourly. A user who flashed, joined Wi-Fi,
+  installed Tailscale, set a password and reflashed within the hour lost
+  every one of those changes (field report: "passwords were reset to
+  defaults, SSH config, everything"). It now runs every 5 minutes, on a
+  NetworkManager connect, after a Tailscale toggle, and at shutdown
+  (`/etc/local.d/cpz-save.stop`), serialized by `/run/cpz-save.lock`.
+  Keep all four; the shutdown hook is the one that catches "poweroff,
+  then pull the card", and the NM dispatcher catches a freshly joined
+  Wi-Fi profile before the first cron tick.
+- **v0.21.6: the flasher must not format a valid-but-dirty CPZDATA.**
+  `fsck.ext4 -n` returns non-zero for a journal that needs replay; the
+  pre-v0.21.6 code read that as corruption and ran `mkfs.ext4`, wiping a
+  perfectly good `/cfg` on a reflash after an unclean shutdown. The fix
+  is `blkid` says ext4 → `e2fsck -f -y` repair → `fsck -n` verify;
+  `mkfs` only when the filesystem is absent/not ext4 or the repair fails.
 
 ### Flasher (`flash-cpz.sh`, v0.21.5)
 - **Partition names differ by device class.** `/dev/mmcblk0` →
@@ -614,7 +634,9 @@ The upstream store is gone from the fork, but the apps are relevant:
 | `rootfs-overlay/usr/local/bin/cpz-desktop` | on-demand HDMI session (root or cpz) |
 | `rootfs-overlay/usr/local/bin/cpz-tailscale` | optional Tailscale on/off (runlevel + service + availability) |
 | `rootfs-overlay/etc/local.d/cpz-tailscale-boot.start` | re-applies the saved Tailscale preference at boot |
-| `rootfs-overlay/usr/local/bin/cpz-save` | persistence snapshot → `/cfg/save.tar.gz` (hourly cron + manual) |
+| `rootfs-overlay/usr/local/bin/cpz-save` | persistence snapshot → `/cfg/save.tar.gz` (5-min cron + NM connect + Tailscale toggle + shutdown + manual, lock-serialized) |
+| `rootfs-overlay/etc/local.d/cpz-save.stop` | final snapshot at shutdown/reboot |
+| `rootfs-overlay/etc/NetworkManager/dispatcher.d/90-cpz-save` | snapshot when a connection comes up/down |
 | `rootfs-overlay/etc/cpz/` | `sway.config` (0644), `hdmi-mode` |
 | `rootfs-overlay/etc/cpz-release` | version + NOTES |
 | `launcher/` | APPLaunch fork, branch `alpine` (see its own `AGENTS.md`) |

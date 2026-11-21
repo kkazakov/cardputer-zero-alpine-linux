@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.5
+VER=0.21.6
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -682,6 +682,21 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q "run-parts" /mnt/rootfs/etc/crontabs/root \
         && echo "OK: crond periodic table configured" \
         || echo "FAIL: /etc/crontabs/root missing (crond idle, no snapshots)"
+    # v0.21.6: persistence must keep up with a setup session. The 5-minute
+    # cron, the NetworkManager connect hook and the shutdown hook are the
+    # three triggers that stop "setup then reflash" from losing everything.
+    grep -q '^\*/5.*cpz-save' /mnt/rootfs/etc/crontabs/root \
+        && echo "OK: 5-minute cpz-save cron configured" \
+        || echo "FAIL: no 5-minute cpz-save entry (hourly-only persistence)"
+    [ -x /mnt/rootfs/etc/NetworkManager/dispatcher.d/90-cpz-save ] \
+        && echo "OK: cpz-save runs on NetworkManager connect" \
+        || echo "FAIL: NM dispatcher cpz-save missing"
+    [ -x /mnt/rootfs/etc/local.d/cpz-save.stop ] \
+        && echo "OK: cpz-save runs at shutdown" \
+        || echo "FAIL: shutdown cpz-save hook missing"
+    grep -q 'cpz-save.lock' /mnt/rootfs/usr/local/bin/cpz-save \
+        && echo "OK: cpz-save serialized (lock)" \
+        || echo "FAIL: cpz-save has no lock — triggers can race"
     # v0.19.0: NetworkManager config must ride the persistence layer, and
     # the restore must actually overwrite user files. The old restore used
     # -xzpkf ("k" = keep-old-files) on pass A and tar -k on pass B, so

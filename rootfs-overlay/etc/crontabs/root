@@ -3,6 +3,10 @@
 # idles and /etc/periodic/* never runs.
 
 # min	hour	day	month	weekday	command
+# v0.21.6: snapshot every 5 minutes, not just hourly. A setup session
+# (Wi-Fi, Tailscale, password, SSH keys) that ends in a reflash used to
+# lose everything newer than the last hourly run.
+*/5	*	*	*	*	/usr/local/bin/cpz-save >/dev/null 2>&1
 */15	*	*	*	*	run-parts /etc/periodic/15min
 0	*	*	*	*	run-parts /etc/periodic/hourly
 0	2	*	*	*	run-parts /etc/periodic/daily
