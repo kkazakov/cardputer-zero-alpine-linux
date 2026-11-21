@@ -5,7 +5,7 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.21.3** (base repo `main`; the launcher fork is a
+Current release: **v0.21.4** (base repo `main`; the launcher fork is a
 sibling checkout in `launcher/`, branch `alpine`). v0.20.0 added Files
 and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
 startup and opens Files in `/home/cpz`; v0.21.0 makes `/cfg` (CPZDATA)
@@ -13,7 +13,9 @@ cover the whole card on every flash route, including Windows/macOS/Etcher
 ones; v0.21.1 installs `shadow` so `passwd` works as `cpz`; v0.21.2
 preserves root/cpz password changes across a reflash; v0.21.3 adds the
 optional Tailscale on/off app (hidden until installed + logged in) and
-keeps the node logged in across a reflash.
+keeps the node logged in across a reflash; v0.21.4 stops the boot restore
+from rolling `/var/lib/applaunch` back to the last hourly snapshot, so an
+OFF Tailscale/HDMI switch stays off after a reboot.
 
 ---
 
@@ -134,6 +136,10 @@ What survives a reflash (see `rootfs-overlay/usr/local/bin/cpz-save` /
   (launcher config, HDMI/Tailscale preferences), **`/var/lib/tailscale`**
   (optional Tailscale node key + login profiles, so the node is not
   re-authenticated after a reflash)
+  - v0.21.4 exception for `/var/lib/applaunch`: it is **live state**, not
+    a saved setting. On a normal boot the running files win; the archive
+    only fills it when the directory is empty (fresh flash). See the
+    v0.21.4 trap below.
 - pass B (additive): `/etc/local.d`, `/etc/conf.d`, `/etc/apk/world`,
   NetworkManager global config not shipped by the new image
 - narrow merge (v0.21.2): only the `root` and `cpz` lines of
@@ -221,7 +227,7 @@ complete release. The latest ZIP should also replace the loose image in
 
 ---
 
-# State (v0.21.3)
+# State (v0.21.4)
 
 ## What the image is
 
@@ -492,6 +498,17 @@ Added/fixed (all in `launcher/`):
 - Test a persistence change by running both scripts against a fake `/cfg`
   (Docker `-v dir:/cfg`, copy the scripts in) — grepping the save list is
   not evidence that restore works.
+- **v0.21.4: `/var/lib/applaunch` is live state, not a saved setting.**
+  The old pass A restored it on every boot, so an OFF Tailscale switch
+  written after the last hourly save was overwritten with the archive's
+  stale `1` and the tunnel came back up after a reboot (same class of bug
+  for the HDMI preference and any launcher config). The image ships an
+  **empty** `/var/lib/applaunch`; `cpz-restore.start` now skips that member
+  when the live directory is non-empty, and only a fresh flash takes the
+  archive. Do not "simplify" it back into pass A archive-wins, and do not
+  test it by only grepping the script: write `0` to the live preference,
+  run `cpz-restore.start` with an archive that holds `1`, and check the
+  live file is still `0`.
 
 ### CPZDATA card growth (`cpz-grow.start`, v0.21.0)
 - **The kernel will not re-read the partition table of a disk whose

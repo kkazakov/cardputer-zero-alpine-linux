@@ -3,7 +3,7 @@
 An extremely light, purpose-built **Alpine Linux** operating system for the
 **M5Stack CardputerZero** (Raspberry Pi CM0 / RP3A0, Broadcom BCM2837).
 
-**Status: v0.21.3.** The launcher face of the stock M5 image, on Alpine:
+**Status: v0.21.4.** The launcher face of the stock M5 image, on Alpine:
 the APPLaunch UI (carousel, settings, Files, Camera, calculator, CLI
 terminal) owns the internal LCD and boots straight into it. HDMI/Sway is
 opt-in and stays dark until you start it. The v0.19.0 Sway keyboard and
@@ -14,16 +14,18 @@ the `CPZDATA` persistence partition cover the whole card on **every** flash
 route — `dd`, Imager and Etcher now get `/cfg` too, from the device, after
 one extra reboot on a brand-new card — v0.21.1 installs `shadow` so
 `passwd` works as `cpz` (Alpine's busybox applet is not setuid), v0.21.2
-preserves root/cpz password changes across a reflash, and v0.21.3 adds
+preserves root/cpz password changes across a reflash, v0.21.3 adds
 the optional **Tailscale** on/off card (hidden until the package is
 installed and logged in) and keeps the Tailscale node logged in across a
-reflash. Files and
+reflash, and v0.21.4 fixes the boot restore rolling the launcher state
+back to the last hourly snapshot (an OFF Tailscale switch no longer comes
+back ON after a reboot). Files and
 Camera content lives under `/home/cpz`, so reflashes preserve it. The
 device test checklist is in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
-**Latest published release:** [CPZ-Alpine v0.21.3](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.21.3).
+**Latest published release:** [CPZ-Alpine v0.21.4](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.21.4).
 Download the ZIP (image + SHA-256 + Linux/Windows/macOS flashers + README),
-not the loose image. v0.21.3 has the hardware pass recorded in
+not the loose image. v0.21.4 has the hardware pass recorded in
 [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
 ## Screenshots

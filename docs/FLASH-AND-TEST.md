@@ -208,6 +208,24 @@ flash the bigger card.
       ```
       The node comes back logged in once the apk reinstall finishes (no
       second `tailscale up`).
+- [ ] **T2i — OFF survives a reboot (v0.21.4)** [TEST]: with the tunnel
+      ON, write an archive that still says ON, then switch OFF and reboot
+      (or run the boot path directly):
+      ```sh
+      printf '0\n' > /var/lib/applaunch/tailscale
+      rc-update del tailscale default
+      /etc/local.d/cpz-restore.start      # archive still holds "1"
+      cat /var/lib/applaunch/tailscale    # must still be 0
+      /etc/local.d/cpz-tailscale-boot.start
+      pidof tailscaled                    # must print nothing
+      ls /etc/runlevels/default/tailscale # must not exist
+      ```
+      The v0.21.3 bug was the first step: `cpz-restore` copied the stale
+      `1` over the live `0`. After a real reboot the same checks apply
+      (`cat` is `0`, no `tailscaled`, no runlevel link). A **fresh flash**
+      must still restore the saved value, because the image ships an empty
+      `/var/lib/applaunch` — that case is the only one where the archive
+      is copied.
 - [ ] **T3 — serial rescue**: the normal image has **no USB-C serial
       gadget** (dwc2 is host-only for Ethernet/USB-A). Use the 14-pin
       expansion UART at 115200, or SSH. If the LCD is dark and you have

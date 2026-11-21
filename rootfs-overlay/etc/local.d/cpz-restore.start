@@ -62,6 +62,14 @@
 # the image (cpz-wifi.start reinstalls /cfg/pkglist.txt in the background),
 # so ownership is forced root-only here and re-applied to root:tailscale
 # by /usr/local/bin/cpz-tailscale once the account exists.
+#
+# v0.21.4: /var/lib/applaunch is no longer archive-wins on a normal boot.
+# It holds live launcher state (config.json, the Tailscale/HDMI toggles),
+# and the hourly snapshot is stale by definition when the user changed a
+# switch after the last save. Restoring it made an OFF Tailscale switch
+# come back ON after a reboot. The image ships an empty directory, so the
+# archive still fills it on a fresh flash (the only case where there is
+# no live state to keep).
 
 CFG=/cfg
 A=$CFG/save.tar.gz
@@ -91,8 +99,21 @@ if [ -z "$STAGE" ]; then
 fi
 tar -xzpf "$A" -C "$STAGE" 2>/dev/null || true
 
+# v0.21.4: /var/lib/applaunch is LIVE state, not just a saved setting. On a
+# normal reboot the running files (config.json, tailscale, hdmi-desktop)
+# are newer than the last hourly snapshot; restoring the archive rolled
+# them back. Field report: Tailscale was switched OFF, the card rebooted,
+# and the stale "1" from /cfg brought the tunnel back up. The image ships
+# an EMPTY /var/lib/applaunch, so emptiness is still a reliable "fresh
+# flash" marker: only then does the archive populate it.
+LAUNCHER_LIVE=0
+if [ -d /var/lib/applaunch ] && [ -n "$(ls -A /var/lib/applaunch 2>/dev/null)" ]; then
+    LAUNCHER_LIVE=1
+fi
+
 # pass A — archive wins (overwrite without asking)
 for p in $PASS_A; do
+    [ "$LAUNCHER_LIVE" = 1 ] && [ "$p" = "var/lib/applaunch" ] && continue
     [ -e "$STAGE/$p" ] || continue
     if [ -d "$STAGE/$p" ]; then
         mkdir -p "/$p" 2>/dev/null

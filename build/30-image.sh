@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.3
+VER=0.21.4
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -344,6 +344,12 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -s /mnt/rootfs/usr/share/APPLaunch/share/images/tailscale_100.png ] \
         && echo "OK: Tailscale app icon installed" \
         || echo "FAIL: tailscale_100.png missing from the launcher resources"
+    # v0.21.4: the launcher state dir must not be archive-wins on a normal
+    # boot (it made an OFF Tailscale switch come back ON). The guard is a
+    # named variable so a future refactor cannot silently drop it.
+    grep -q 'LAUNCHER_LIVE' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && echo "OK: launcher state kept live across a normal boot" \
+        || echo "FAIL: cpz-restore still restores /var/lib/applaunch unconditionally"
     # v0.17.2 field fixes: Alpine splits NM's wifi support + CLI out of the
     # main package. Without them nmcli is absent and NM marks wlan0
     # unmanaged ("device type unmanaged by default") — the launcher's
