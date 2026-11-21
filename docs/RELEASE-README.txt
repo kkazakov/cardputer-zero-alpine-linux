@@ -30,7 +30,9 @@ camera media survive a reflash.
 
   sha256sum -c cpz-alpine-@VERSION@.img.gz.sha256
   lsblk                      # find the card, e.g. /dev/sdb (NOT /dev/sda)
+                             # laptop reader: /dev/mmcblk0
   sudo ./flash-cpz.sh /dev/sdb
+  # or: sudo ./flash-cpz.sh /dev/mmcblk0
 
 The script also verifies the checksum, unmounts auto-mounted partitions,
 creates CPZDATA at the fixed 4 GiB offset up to the end of the card, formats

@@ -29,8 +29,10 @@ It contains the image, checksum, README and Linux/Windows/macOS flashers.
 ```sh
 sha256sum -c cpz-alpine-0.21.2.img.gz.sha256     # verify download
 # /dev/sdX = the LAB microSD card (NOT the stock card, NOT a disk!)
+# built-in laptop reader: /dev/mmcblk0 (v0.21.5+ handles mmcblk/nvme names)
 lsblk                                          # triple-check sizes
 sudo ./flash-cpz.sh /dev/sdX                   # preserves /cfg on reflashes
+# or: sudo ./flash-cpz.sh /dev/mmcblk0
 ```
 
 `flash-cpz.sh` verifies the checksum, unmounts the card, writes the image,

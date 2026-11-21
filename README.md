@@ -3,7 +3,7 @@
 An extremely light, purpose-built **Alpine Linux** operating system for the
 **M5Stack CardputerZero** (Raspberry Pi CM0 / RP3A0, Broadcom BCM2837).
 
-**Status: v0.21.4.** The launcher face of the stock M5 image, on Alpine:
+**Status: v0.21.5.** The launcher face of the stock M5 image, on Alpine:
 the APPLaunch UI (carousel, settings, Files, Camera, calculator, CLI
 terminal) owns the internal LCD and boots straight into it. HDMI/Sway is
 opt-in and stays dark until you start it. The v0.19.0 Sway keyboard and
@@ -17,15 +17,17 @@ one extra reboot on a brand-new card — v0.21.1 installs `shadow` so
 preserves root/cpz password changes across a reflash, v0.21.3 adds
 the optional **Tailscale** on/off card (hidden until the package is
 installed and logged in) and keeps the Tailscale node logged in across a
-reflash, and v0.21.4 fixes the boot restore rolling the launcher state
+reflash, v0.21.4 fixes the boot restore rolling the launcher state
 back to the last hourly snapshot (an OFF Tailscale switch no longer comes
-back ON after a reboot). Files and
+back ON after a reboot), and v0.21.5 fixes `flash-cpz.sh` on
+`mmcblk`/`nvme` card readers (it looked for `/dev/mmcblk03` instead of
+`/dev/mmcblk0p3` and skipped the CPZDATA format). Files and
 Camera content lives under `/home/cpz`, so reflashes preserve it. The
 device test checklist is in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
-**Latest published release:** [CPZ-Alpine v0.21.4](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.21.4).
+**Latest published release:** [CPZ-Alpine v0.21.5](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.21.5).
 Download the ZIP (image + SHA-256 + Linux/Windows/macOS flashers + README),
-not the loose image. v0.21.4 has the hardware pass recorded in
+not the loose image. v0.21.5 has the hardware pass recorded in
 [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
 ## Screenshots
@@ -342,7 +344,13 @@ contain **zero** `FAIL:` lines (it ends with `verification clean`). A
 
 ```sh
 sudo ./build/flash-cpz.sh /dev/sdX [image.img.gz]
+# or the whole disk of a laptop's built-in reader:
+sudo ./build/flash-cpz.sh /dev/mmcblk0 [image.img.gz]
 ```
+
+Pass the **whole disk** (`/dev/sdb`, `/dev/mmcblk0`), never a partition
+(`/dev/sdb1`, `/dev/mmcblk0p1`). Since v0.21.5 the script handles the
+`mmcblk`/`nvme` partition naming (`mmcblk0p3`, not `mmcblk03`).
 
 Writes the fixed 1.8 GiB image (256 MiB FAT boot + 1.5 GiB ext4 root),
 then creates the **CPZDATA** partition at the fixed 4 GiB offset up to the

@@ -5,7 +5,7 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.21.4** (base repo `main`; the launcher fork is a
+Current release: **v0.21.5** (base repo `main`; the launcher fork is a
 sibling checkout in `launcher/`, branch `alpine`). v0.20.0 added Files
 and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
 startup and opens Files in `/home/cpz`; v0.21.0 makes `/cfg` (CPZDATA)
@@ -15,7 +15,10 @@ preserves root/cpz password changes across a reflash; v0.21.3 adds the
 optional Tailscale on/off app (hidden until installed + logged in) and
 keeps the node logged in across a reflash; v0.21.4 stops the boot restore
 from rolling `/var/lib/applaunch` back to the last hourly snapshot, so an
-OFF Tailscale/HDMI switch stays off after a reboot.
+OFF Tailscale/HDMI switch stays off after a reboot; v0.21.5 fixes
+`flash-cpz.sh` on `mmcblk`/`nvme` card readers (it looked for
+`/dev/mmcblk03` instead of `/dev/mmcblk0p3` and skipped the CPZDATA
+format).
 
 ---
 
@@ -227,7 +230,7 @@ complete release. The latest ZIP should also replace the loose image in
 
 ---
 
-# State (v0.21.4)
+# State (v0.21.5)
 
 ## What the image is
 
@@ -509,6 +512,20 @@ Added/fixed (all in `launcher/`):
   test it by only grepping the script: write `0` to the live preference,
   run `cpz-restore.start` with an archive that holds `1`, and check the
   live file is still `0`.
+
+### Flasher (`flash-cpz.sh`, v0.21.5)
+- **Partition names differ by device class.** `/dev/mmcblk0` →
+  `/dev/mmcblk0p3`, `/dev/nvme0n1` → `/dev/nvme0n1p3`, but `/dev/sda` →
+  `/dev/sda3`. The old `PART="${DEV}3"` built `/dev/mmcblk03`, so after
+  writing p1/p2 the script printed `WARNING: /dev/mmcblk03 did not
+  appear — persistence unavailable`, **exited 0**, and left p3 as an
+  unformatted partition. It only ever worked on `/dev/sdX` USB readers.
+  Fix: suffix `p3` when the disk basename ends in a digit, retry `partx`
+  for ~3 s, and exit non-zero with the manual `mkfs` line if the node is
+  still missing.
+- A card flashed by the buggy version is still bootable; finish it with
+  `sudo partx -u /dev/mmcblk0 && sudo mkfs.ext4 -F -L CPZDATA
+  /dev/mmcblk0p3` (or rerun the fixed flasher).
 
 ### CPZDATA card growth (`cpz-grow.start`, v0.21.0)
 - **The kernel will not re-read the partition table of a disk whose

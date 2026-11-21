@@ -26,6 +26,14 @@
 #     CPZDATA created by the device itself on the first boot (one extra
 #     reboot); this script is still the recommended path because it is
 #     offline and does not reboot the card.
+#
+# v0.21.5: partition nodes are device-class dependent: /dev/mmcblk0p3 and
+# /dev/nvme0n1p3, but /dev/sda3. The old `PART="${DEV}3"` built
+# /dev/mmcblk03, so after writing p1/p2 the script declared CPZDATA
+# "unavailable", exited 0, and left p3 unformatted (field report from an
+# internal SD reader). The suffix is now chosen from the disk name, the
+# node lookup retries for ~3 s, and a missing node is a hard error with
+# the manual mkfs line.
 
 set -eu
 
@@ -85,12 +93,35 @@ echo "8388608,," | sfdisk --no-reread --append "$DEV" >/dev/null || {
 
 # re-read the table without disturbing mounted media
 partx -u --nr 3 "$DEV" 2>/dev/null || true
-PART="${DEV}3"
+
+# v0.21.5: partition naming differs by device class. mmcblk0 → mmcblk0p3,
+# nvme0n1 → nvme0n1p3, but sda → sda3. The old `PART="${DEV}3"` produced
+# /dev/mmcblk03, so the CPZDATA step never found the partition it had just
+# created and bailed out with "persistence unavailable" (field report from
+# an internal SD reader). Suffix `p` when the disk name ends in a digit.
+case "$(basename "$DEV")" in
+    *[0-9]) PART="${DEV}p3" ;;
+    *)      PART="${DEV}3" ;;
+esac
+
+# udev can lag behind partx; give the node a moment before giving up.
+# `-u` updates an existing entry, `-a` adds a new one — which one is needed
+# depends on the driver (mmc/nvme accept -u; loop/partscan only create the
+# node on -a), so try both. Failures here are expected once the node exists.
+i=0
+while [ ! -b "$PART" ] && [ "$i" -lt 10 ]; do
+    partx -u --nr 3 "$DEV" 2>/dev/null || true
+    partx -a --nr 3 "$DEV" 2>/dev/null || true
+    partx -a "$DEV" 2>/dev/null || true
+    i=$((i + 1))
+    sleep 0.3
+done
 
 if [ ! -b "$PART" ]; then
-    echo "WARNING: $PART did not appear — persistence unavailable this time."
-    echo "Wi-Fi etc. still work; run flash-cpz.sh again from a desktop."
-    exit 0
+    echo "ERROR: $PART did not appear after re-reading the partition table." >&2
+    echo "The card is bootable but has no /cfg yet. Finish it with:" >&2
+    echo "  sudo partx -u $DEV && sudo mkfs.ext4 -F -L CPZDATA $PART" >&2
+    exit 1
 fi
 
 echo "== checking the data filesystem =="
@@ -98,7 +129,17 @@ if fsck.ext4 -n "$PART" >/dev/null 2>&1; then
     echo "CPZDATA intact — your data survives this flash."
 else
     echo "CPZDATA absent/corrupt (first flash?) — formatting $PART"
-    mkfs.ext4 -F -L CPZDATA "$PART"
+    # partx can expose the node a hair before the kernel finishes wiring it
+    # up; mkfs then fails with "No such device or address". Settle and retry.
+    if command -v udevadm >/dev/null 2>&1; then
+        udevadm settle -t 3 2>/dev/null || true
+    fi
+    n=0
+    until mkfs.ext4 -F -L CPZDATA "$PART"; do
+        n=$((n + 1))
+        [ "$n" -ge 3 ] && { echo "ERROR: cannot format $PART" >&2; exit 1; }
+        sleep 1
+    done
 fi
 
 # v0.21.0: the partition runs to the end of the card, but an ext4

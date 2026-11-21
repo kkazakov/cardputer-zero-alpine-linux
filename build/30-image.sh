@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.4
+VER=0.21.5
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
