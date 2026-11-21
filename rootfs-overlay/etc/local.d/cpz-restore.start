@@ -81,9 +81,22 @@ if [ -b /dev/mmcblk0p3 ] && ! mountpoint $CFG >/dev/null 2>&1; then
 fi
 
 mountpoint $CFG >/dev/null 2>&1 || exit 0
+[ -s "$A" ] || A=$CFG/save.tar.gz.prev
 [ -s "$A" ] || exit 0
-tar -tzf "$A" >/dev/null 2>&1 ||
-    { echo "cpz-restore: archive unreadable, skipping" >&2; exit 0; }
+# v0.21.7: fall back to the previous generation if the current archive is
+# unreadable, and leave a short trace on /cfg so a failed restore is
+# diagnosable after the fact (logger goes nowhere without a syslog daemon).
+if ! tar -tzf "$A" >/dev/null 2>&1; then
+    if [ -s "$CFG/save.tar.gz.prev" ] && tar -tzf "$CFG/save.tar.gz.prev" >/dev/null 2>&1; then
+        A=$CFG/save.tar.gz.prev
+        echo "$(date -u) main archive unreadable, using previous generation" >> "$CFG/cpz-restore.log"
+    else
+        echo "$(date -u) no readable archive, skipping" >> "$CFG/cpz-restore.log"
+        echo "cpz-restore: archive unreadable, skipping" >&2
+        exit 0
+    fi
+fi
+echo "$(date -u) restoring $(basename "$A") ($(wc -c < "$A") bytes)" >> "$CFG/cpz-restore.log"
 
 PASS_A="root home/cpz etc/dropbear etc/wpa_supplicant etc/hostname \
 etc/hosts etc/NetworkManager/system-connections var/lib/applaunch \
@@ -216,6 +229,7 @@ if nmcli -t general status >/dev/null 2>&1; then
 fi
 
 NMPROF=$(ls /etc/NetworkManager/system-connections 2>/dev/null | wc -l)
+echo "$(date -u) done: $NMPROF NetworkManager profile(s) available" >> "$CFG/cpz-restore.log"
 logger -t cpz-restore \
     "restored snapshot: $NMPROF NetworkManager profile(s) available" \
     2>/dev/null || true

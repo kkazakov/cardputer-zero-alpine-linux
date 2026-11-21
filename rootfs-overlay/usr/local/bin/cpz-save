@@ -107,6 +107,10 @@ if ! tar -czpf "$T" -C / "$@" 2>/dev/null; then
     echo "cpz-save: warning: files changed while reading; archive validated" >&2
 fi
 chmod 600 "$T"
+# v0.21.7: keep the previous generation as a hardlink (no data copy). If a
+# restore ever finds the new archive unreadable, cpz-restore falls back to
+# this one instead of booting with defaults.
+[ -f "$CFG/save.tar.gz" ] && ln -f "$CFG/save.tar.gz" "$CFG/save.tar.gz.prev" 2>/dev/null
 mv "$T" $CFG/save.tar.gz
 
 # v0.21.2: preserve only the two human accounts' password entries. The

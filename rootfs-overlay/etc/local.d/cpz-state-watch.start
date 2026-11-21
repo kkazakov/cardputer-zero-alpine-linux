@@ -1,0 +1,14 @@
+#!/bin/sh
+# /etc/local.d/cpz-state-watch.start — start the change watcher once.
+#
+# Runs in the `local` service as root after cpz-restore.start. The watcher
+# lives in /usr/local/bin and saves /cfg within ~5 s of a config change, so
+# pulling the card while the device runs loses at most that, instead of
+# waiting for the 5-minute cron or a clean shutdown.
+
+[ -x /usr/local/bin/cpz-state-watch ] || exit 0
+if pgrep -f /usr/local/bin/cpz-state-watch >/dev/null 2>&1; then
+    exit 0
+fi
+setsid /usr/local/bin/cpz-state-watch </dev/null >/dev/null 2>&1 &
+exit 0

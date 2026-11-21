@@ -5,7 +5,7 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.21.6** (base repo `main`; the launcher fork is a
+Current release: **v0.21.7** (base repo `main`; the launcher fork is a
 sibling checkout in `launcher/`, branch `alpine`). v0.20.0 added Files
 and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
 startup and opens Files in `/home/cpz`; v0.21.0 makes `/cfg` (CPZDATA)
@@ -20,7 +20,9 @@ OFF Tailscale/HDMI switch stays off after a reboot; v0.21.5 fixes
 `/dev/mmcblk03` instead of `/dev/mmcblk0p3` and skipped the CPZDATA
 format); v0.21.6 makes persistence keep up with setup (5-minute cron,
 NetworkManager connect, Tailscale toggle, shutdown) and stops the flasher
-from formatting a dirty-but-valid `CPZDATA`.
+from formatting a dirty-but-valid `CPZDATA`; v0.21.7 saves within ~5 s of
+a config change (`cpz-state-watch`), keeps the previous archive as
+`save.tar.gz.prev`, and leaves a restore trace on `/cfg`.
 
 ---
 
@@ -158,8 +160,10 @@ What survives a reflash (see `rootfs-overlay/usr/local/bin/cpz-save` /
 Only `.deb`/store-installed applications are *not* persisted (they belong
 in the image or a bundle). Since v0.21.6 `cpz-save` runs every 5 minutes,
 on a NetworkManager connect, after a Tailscale toggle and at shutdown;
-before that it was hourly, so a setup session followed by a reflash lost
-everything newer than the last run.
+v0.21.7 adds a 5 s watcher for config paths, so a card pulled while the
+device runs loses at most a few seconds. Before v0.21.6 it was hourly, so
+a setup session followed by a reflash lost everything newer than the last
+run.
 
 v0.19.0 note: the restore was silently broken until then — see the
 Persistence trap below. "It's in the save list" is not proof it comes
@@ -234,7 +238,7 @@ complete release. The latest ZIP should also replace the loose image in
 
 ---
 
-# State (v0.21.6)
+# State (v0.21.7)
 
 ## What the image is
 
@@ -532,6 +536,20 @@ Added/fixed (all in `launcher/`):
   perfectly good `/cfg` on a reflash after an unclean shutdown. The fix
   is `blkid` says ext4 → `e2fsck -f -y` repair → `fsck -n` verify;
   `mkfs` only when the filesystem is absent/not ext4 or the repair fails.
+- **v0.21.7: cron + shutdown still lose data if the card is pulled.**
+  Field test on v0.21.6: `/cfg` was preserved across the flash, the
+  shutdown hook demonstrably rewrote the archive on a clean reboot, and a
+  manual `cpz-restore.start` restored a marker — yet the reflash came
+  back with defaults. The archive on the card was from 15:45, the
+  Wi-Fi/password changes were made later, and the card was pulled before
+  the next 5-minute tick. `cpz-state-watch` now polls the config paths
+  (`/etc/shadow`, NM profiles, tailscale state/prefs, SSH keys,
+  hostname/hosts, `apk/world`) every 5 s and saves on change.
+  `cpz-save` also hardlinks the old archive to `save.tar.gz.prev`, and
+  `cpz-restore` falls back to it and appends to `/cfg/cpz-restore.log`.
+  Keep the watcher and the `.prev` generation: the cron/shutdown path
+  only covers clean poweroffs, and the restore log is the only trace
+  (there is no syslog daemon).
 
 ### Flasher (`flash-cpz.sh`, v0.21.5)
 - **Partition names differ by device class.** `/dev/mmcblk0` →
@@ -634,8 +652,10 @@ The upstream store is gone from the fork, but the apps are relevant:
 | `rootfs-overlay/usr/local/bin/cpz-desktop` | on-demand HDMI session (root or cpz) |
 | `rootfs-overlay/usr/local/bin/cpz-tailscale` | optional Tailscale on/off (runlevel + service + availability) |
 | `rootfs-overlay/etc/local.d/cpz-tailscale-boot.start` | re-applies the saved Tailscale preference at boot |
-| `rootfs-overlay/usr/local/bin/cpz-save` | persistence snapshot → `/cfg/save.tar.gz` (5-min cron + NM connect + Tailscale toggle + shutdown + manual, lock-serialized) |
+| `rootfs-overlay/usr/local/bin/cpz-save` | persistence snapshot → `/cfg/save.tar.gz` + `.prev` (5-min cron + NM connect + Tailscale toggle + shutdown + watcher + manual, lock-serialized) |
 | `rootfs-overlay/etc/local.d/cpz-save.stop` | final snapshot at shutdown/reboot |
+| `rootfs-overlay/usr/local/bin/cpz-state-watch` | 5 s poll of the config paths; saves on change |
+| `rootfs-overlay/etc/local.d/cpz-state-watch.start` | starts the watcher once at boot |
 | `rootfs-overlay/etc/NetworkManager/dispatcher.d/90-cpz-save` | snapshot when a connection comes up/down |
 | `rootfs-overlay/etc/cpz/` | `sway.config` (0644), `hdmi-mode` |
 | `rootfs-overlay/etc/cpz-release` | version + NOTES |

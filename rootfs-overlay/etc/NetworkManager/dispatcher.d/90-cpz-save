@@ -17,5 +17,7 @@ case "${2:-}" in
 esac
 
 [ -x /usr/local/bin/cpz-save ] || exit 0
-/usr/local/bin/cpz-save >/dev/null 2>&1 &
+# setsid: NM may kill the dispatcher's process group when the script exits,
+# which used to take the backgrounded cpz-save with it before it finished.
+setsid /usr/local/bin/cpz-save >/dev/null 2>&1 &
 exit 0

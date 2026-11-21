@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.6
+VER=0.21.7
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -697,6 +697,21 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'cpz-save.lock' /mnt/rootfs/usr/local/bin/cpz-save \
         && echo "OK: cpz-save serialized (lock)" \
         || echo "FAIL: cpz-save has no lock — triggers can race"
+    # v0.21.7: save within seconds of a config change (card pulled/power
+    # cut before the next tick), keep the previous archive, and leave a
+    # restore trace on /cfg.
+    [ -x /mnt/rootfs/usr/local/bin/cpz-state-watch ] \
+        && echo "OK: config change watcher present" \
+        || echo "FAIL: cpz-state-watch missing"
+    [ -x /mnt/rootfs/etc/local.d/cpz-state-watch.start ] \
+        && echo "OK: watcher starts at boot" \
+        || echo "FAIL: cpz-state-watch.start missing"
+    grep -q 'save.tar.gz.prev' /mnt/rootfs/usr/local/bin/cpz-save \
+        && echo "OK: previous archive generation kept" \
+        || echo "FAIL: cpz-save does not keep save.tar.gz.prev"
+    grep -q 'cpz-restore.log' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && echo "OK: restore leaves a trace on /cfg" \
+        || echo "FAIL: no restore trace (failures undiagnosable)"
     # v0.19.0: NetworkManager config must ride the persistence layer, and
     # the restore must actually overwrite user files. The old restore used
     # -xzpkf ("k" = keep-old-files) on pass A and tar -k on pass B, so

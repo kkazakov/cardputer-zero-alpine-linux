@@ -3,7 +3,7 @@
 An extremely light, purpose-built **Alpine Linux** operating system for the
 **M5Stack CardputerZero** (Raspberry Pi CM0 / RP3A0, Broadcom BCM2837).
 
-**Status: v0.21.6.** The launcher face of the stock M5 image, on Alpine:
+**Status: v0.21.7.** The launcher face of the stock M5 image, on Alpine:
 the APPLaunch UI (carousel, settings, Files, Camera, calculator, CLI
 terminal) owns the internal LCD and boots straight into it. HDMI/Sway is
 opt-in and stays dark until you start it. The v0.19.0 Sway keyboard and
@@ -21,16 +21,18 @@ reflash, v0.21.4 fixes the boot restore rolling the launcher state
 back to the last hourly snapshot (an OFF Tailscale switch no longer comes
 back ON after a reboot), and v0.21.5 fixes `flash-cpz.sh` on
 `mmcblk`/`nvme` card readers (it looked for `/dev/mmcblk03` instead of
-`/dev/mmcblk0p3` and skipped the CPZDATA format), and v0.21.6 makes
+`/dev/mmcblk0p3` and skipped the CPZDATA format), v0.21.6 makes
 persistence keep up with setup (`cpz-save` every 5 minutes, on
 NetworkManager connect, after a Tailscale toggle and at shutdown) and
-stops the flasher formatting a dirty-but-valid CPZDATA. Files and
+stops the flasher formatting a dirty-but-valid CPZDATA, and v0.21.7
+saves within ~5 s of a config change and keeps the previous archive for
+recovery. Files and
 Camera content lives under `/home/cpz`, so reflashes preserve it. The
 device test checklist is in [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
-**Latest published release:** [CPZ-Alpine v0.21.6](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.21.6).
+**Latest published release:** [CPZ-Alpine v0.21.7](https://github.com/kkazakov/cardputer-zero-alpine-linux/releases/tag/v0.21.7).
 Download the ZIP (image + SHA-256 + Linux/Windows/macOS flashers + README),
-not the loose image. v0.21.6 has the hardware pass recorded in
+not the loose image. v0.21.7 has the hardware pass recorded in
 [docs/FLASH-AND-TEST.md](docs/FLASH-AND-TEST.md).
 
 ## Screenshots
@@ -364,11 +366,14 @@ ext4 filesystem to the partition. On the device, `cpz-save` snapshots
 `/etc/wpa_supplicant`, `/etc/hostname`, `/etc/hosts`, the full NetworkManager
 config tree, `/var/lib/applaunch`, and additive `/etc/local.d`, `/etc/conf.d`,
 and `/etc/apk/world` into `/cfg`; every boot restores them
-(`cpz-restore.start`). Since v0.21.6 it runs **every 5 minutes**, when a
-NetworkManager connection comes up, after a Tailscale toggle, and at
-shutdown — so a normal "configure, power off, reflash" cycle keeps the
-setup. Pulling the card or cutting power still loses anything newer than
-the last snapshot; run `sudo cpz-save` if you want to be certain.
+(`cpz-restore.start`). Since v0.21.7 a small watcher (`cpz-state-watch`)
+saves within ~5 s of a password/SSH/NM/Tailscale/launcher change, and
+`cpz-save` keeps the previous archive as `/cfg/save.tar.gz.prev`, which
+the restore falls back to if the current one is unreadable. The 5-minute
+cron, NetworkManager connect, Tailscale toggle and shutdown hooks remain
+as backstops. Pulling the card in the middle of a save can still lose
+that save; `sudo cpz-save` immediately before removing the card is the
+safe path.
 
 **`dd` / Raspberry Pi Imager / balenaEtcher also work now.** They write only
 p1/p2; on the first boot `cpz-grow.start` appends the CPZDATA entry to the

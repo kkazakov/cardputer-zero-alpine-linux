@@ -1,0 +1,49 @@
+#!/bin/sh
+# /usr/local/bin/cpz-state-watch — save /cfg within seconds of a config change.
+#
+# The 5-minute cron, the NetworkManager dispatcher and the shutdown hook all
+# miss one case: the card is pulled / power is cut while the device is
+# running, so nothing after the last tick is written. This watcher polls only
+# the cheap, important paths (passwords, SSH keys, NM profiles, Tailscale
+# state/preference, launcher prefs, hostname/hosts) every 5 s and calls
+# cpz-save when one changes.
+#
+# It deliberately does NOT watch /home/cpz content (photos/videos): that can
+# change continuously and is covered by the cron + shutdown snapshot. cpz-save
+# itself is lock-serialized, so a save triggered here cannot race another.
+
+WATCH="/etc/shadow \
+/etc/NetworkManager/system-connections \
+/var/lib/tailscale/tailscaled.state \
+/var/lib/applaunch/tailscale \
+/var/lib/applaunch/hdmi-desktop \
+/var/lib/applaunch/config.json \
+/root/.ssh/authorized_keys \
+/home/cpz/.ssh/authorized_keys \
+/etc/hostname \
+/etc/hosts \
+/etc/wpa_supplicant/wpa_supplicant.conf \
+/etc/apk/world"
+
+signature()
+{
+    for p in $WATCH; do
+        [ -e "$p" ] || continue
+        if [ -d "$p" ]; then
+            find "$p" -type f -exec stat -c '%n %Y %s' {} \; 2>/dev/null
+        else
+            stat -c '%n %Y %s' "$p" 2>/dev/null
+        fi
+    done
+}
+
+last=
+while :; do
+    now=$(signature | md5sum 2>/dev/null)
+    if [ -n "$last" ] && [ "$now" != "$last" ]; then
+        logger -t cpz-state-watch "config changed, snapshotting" 2>/dev/null
+        /usr/local/bin/cpz-save >/dev/null 2>&1
+    fi
+    last=$now
+    sleep 5
+done
