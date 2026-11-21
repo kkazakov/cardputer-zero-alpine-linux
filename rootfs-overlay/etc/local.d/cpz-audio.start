@@ -10,10 +10,22 @@
 # dependency, and alsactl is already shipped by alsa-utils.
 
 STATE=/var/lib/alsa/asound.state
+CFG=/home/cpz/.config/cardputerzero/config.json
 
 [ -s "$STATE" ] || { echo "cpz-audio: no $STATE, skipping" >&2; exit 0; }
 
 alsactl restore -f "$STATE" ||
     echo "cpz-audio: alsactl restore failed" >&2
+
+# v0.21.9: the state file is the build-time 86% reference, but the user's
+# last Settings -> Speaker value lives in the launcher config. Restoring the
+# fixed state alone reset the volume on every boot; apply the saved value
+# after it. DACL/DACR are 0..255, the config is a percentage.
+VOL=$(sed -n 's/.*"volume"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$CFG" 2>/dev/null | head -1)
+if [ -n "$VOL" ] && [ "$VOL" -ge 0 ] && [ "$VOL" -le 100 ]; then
+    RAW=$((VOL * 255 / 100))
+    amixer -c 0 sset DACL "$RAW" >/dev/null 2>&1
+    amixer -c 0 sset DACR "$RAW" >/dev/null 2>&1
+fi
 
 exit 0

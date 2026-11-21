@@ -1,0 +1,16 @@
+#!/bin/sh
+# /etc/local.d/cpz-ntp.start — start NTP if the user left it enabled.
+#
+# cpz-ntp set 1 also starts ntpd immediately; this hook restores the choice
+# after a reboot. The network may still be coming up when local.d runs, so
+# give it a moment and retry once in the background instead of blocking boot.
+
+[ -x /usr/local/bin/cpz-ntp ] || exit 0
+[ "$(/usr/local/bin/cpz-ntp status 2>/dev/null)" = "1" ] || exit 0
+
+(
+    sleep 15
+    /usr/local/bin/cpz-ntp set 1 >/dev/null 2>&1
+) </dev/null >/dev/null 2>&1 &
+
+exit 0

@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.8
+VER=0.21.9
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -730,6 +730,20 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'cpz-restore.log' /mnt/rootfs/etc/local.d/cpz-restore.start \
         && echo "OK: restore leaves a trace on /cfg" \
         || echo "FAIL: no restore trace (failures undiagnosable)"
+    # v0.21.9: Settings fixes — writable backlight, saved volume at boot,
+    # NTP on OpenRC.
+    [ -x /mnt/rootfs/etc/local.d/cpz-permissions.start ] \
+        && echo "OK: backlight permissions hook present" \
+        || echo "FAIL: cpz-permissions.start missing (brightness writes fail)"
+    grep -q '"volume"' /mnt/rootfs/etc/local.d/cpz-audio.start \
+        && echo "OK: saved speaker volume applied at boot" \
+        || echo "FAIL: cpz-audio.start ignores the saved volume"
+    [ -x /mnt/rootfs/usr/local/bin/cpz-ntp ] \
+        && echo "OK: NTP helper present" \
+        || echo "FAIL: cpz-ntp missing (network time unavailable)"
+    [ -x /mnt/rootfs/etc/local.d/cpz-ntp.start ] \
+        && echo "OK: NTP boot hook present" \
+        || echo "FAIL: cpz-ntp.start missing"
     # v0.19.0: NetworkManager config must ride the persistence layer, and
     # the restore must actually overwrite user files. The old restore used
     # -xzpkf ("k" = keep-old-files) on pass A and tar -k on pass B, so

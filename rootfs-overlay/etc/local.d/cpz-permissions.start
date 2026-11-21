@@ -1,0 +1,22 @@
+#!/bin/sh
+# /etc/local.d/cpz-permissions.start — make the hardware knobs writable by cpz.
+#
+# The launcher runs as cpz (member of `video`). sysfs creates
+# /sys/class/backlight/backlight/brightness as 0644 root:root, so the
+# Settings -> Screen -> Brightness page could read max/current but every
+# write failed with EACCES ("backlight write failed", value stayed put).
+#
+# The GPIO chips are also root-only; the launcher's power-output control
+# (m5ioe1 line 9) needs them. Group video + 0660 matches the existing
+# udev policy for the other device nodes.
+
+B=/sys/class/backlight/backlight/brightness
+[ -e "$B" ] && chgrp video "$B" 2>/dev/null && chmod 0660 "$B" 2>/dev/null
+
+for g in /dev/gpiochip*; do
+    [ -e "$g" ] || continue
+    chgrp video "$g" 2>/dev/null
+    chmod 0660 "$g" 2>/dev/null
+done
+
+exit 0

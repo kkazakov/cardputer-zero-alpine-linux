@@ -1,0 +1,60 @@
+#!/bin/sh
+# /usr/local/bin/cpz-ntp — NTP on/off for the Alpine image.
+#
+# The launcher's Date & Time page talks to systemd-timedated, which does not
+# exist here, so NtpGet/NtpSet need a native backend: busybox ntpd plus a
+# one-byte preference (/var/lib/cpz/ntp, 1/0). The launcher's NtpSet sudo
+# command calls `cpz-ntp set <0|1>`; NtpGet reads the preference directly.
+#
+# ntpd is run as a daemon against pool.ntp.org. It needs DNS, so the boot
+# hook starts it in the background after the network has had a chance to
+# come up; the toggle starts it immediately.
+
+PREF=/var/lib/cpz/ntp
+mkdir -p /var/lib/cpz 2>/dev/null
+
+running()
+{
+    pidof ntpd >/dev/null 2>&1
+}
+
+start_ntp()
+{
+    running && return 0
+    # busybox ntpd daemonizes on its own; detach from the caller anyway so a
+    # sudo helper exit cannot take it down.
+    setsid /usr/sbin/ntpd -p pool.ntp.org </dev/null >/dev/null 2>&1 &
+    sleep 1
+    running
+}
+
+stop_ntp()
+{
+    running || return 0
+    kill $(pidof ntpd) 2>/dev/null
+    sleep 1
+    running && kill -9 $(pidof ntpd) 2>/dev/null
+    return 0
+}
+
+case "${1:-status}" in
+    status)
+        [ "$(cat "$PREF" 2>/dev/null)" = "1" ] && echo 1 || echo 0
+        ;;
+    set)
+        val=${2:-0}
+        if [ "$val" = "1" ]; then
+            echo 1 > "$PREF"
+            start_ntp || { echo "cpz-ntp: ntpd failed to start" >&2; exit 1; }
+        else
+            echo 0 > "$PREF"
+            stop_ntp
+        fi
+        ;;
+    *)
+        echo "usage: cpz-ntp status|set 0|1" >&2
+        exit 2
+        ;;
+esac
+
+exit 0
