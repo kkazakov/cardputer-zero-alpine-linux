@@ -168,6 +168,10 @@ svc_add hostname boot
 svc_add hwclock boot
 svc_add modules boot
 svc_add seedrng boot
+# v0.21.11: restore /cfg before applaunch/dropbear/networkmanager start, so
+# the launcher loads the saved settings, dropbear serves the saved host keys
+# and NM sees the saved profiles at first scan.
+svc_add cpz-restore boot
 svc_add sysctl boot
 svc_add syslog boot
 # v0.14: NetworkManager replaces ifupdown-ng + wpa_supplicant (the

@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+# /etc/init.d/cpz-restore — restore /cfg persistence BEFORE the services start.
+#
+# v0.21.11: the restore used to live in /etc/local.d, which runs AFTER every
+# default-runlevel service — after applaunch had already loaded the default
+# settings, after dropbear had generated/loaded its host keys, and after
+# NetworkManager had scanned for connection profiles. A reflash therefore
+# booted with defaults even though /cfg held the right archive. Running in
+# the boot runlevel puts the snapshot in place before any of them start.
+
+description="Restore /cfg (CPZDATA) persistence before services start"
+
+depend()
+{
+    before applaunch networkmanager dropbear
+}
+
+start()
+{
+    ebegin "Restoring /cfg snapshot"
+    /etc/cpz-restore.start
+    eend $?
+}

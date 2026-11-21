@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.10
+VER=0.21.11
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -338,7 +338,7 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'var/lib/tailscale' /mnt/rootfs/usr/local/bin/cpz-save \
         && echo "OK: Tailscale node state saved to /cfg" \
         || echo "FAIL: cpz-save does not archive /var/lib/tailscale"
-    grep -q 'var/lib/tailscale' /mnt/rootfs/etc/local.d/cpz-restore.start \
+    grep -q 'var/lib/tailscale' /mnt/rootfs/etc/cpz-restore.start \
         && echo "OK: Tailscale node state restored from /cfg" \
         || echo "FAIL: cpz-restore does not merge /var/lib/tailscale"
     [ -s /mnt/rootfs/usr/share/APPLaunch/share/images/tailscale_100.png ] \
@@ -347,7 +347,7 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     # v0.21.4: the launcher state dir must not be archive-wins on a normal
     # boot (it made an OFF Tailscale switch come back ON). The guard is a
     # named variable so a future refactor cannot silently drop it.
-    grep -q 'LAUNCHER_LIVE' /mnt/rootfs/etc/local.d/cpz-restore.start \
+    grep -q 'LAUNCHER_LIVE' /mnt/rootfs/etc/cpz-restore.start \
         && echo "OK: launcher state kept live across a normal boot" \
         || echo "FAIL: cpz-restore still restores /var/lib/applaunch unconditionally"
     # v0.17.2 field fixes: Alpine splits NM's wifi support + CLI out of the
@@ -563,7 +563,7 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -x /mnt/rootfs/etc/local.d/cpz-hdmi-boot.start ] \
         && echo "OK: HDMI desktop preference re-applied at boot" \
         || echo "FAIL: cpz-hdmi-boot.start missing"
-    grep -q "chown -R cpz:cpz /var/lib/applaunch" /mnt/rootfs/etc/local.d/cpz-restore.start \
+    grep -q "chown -R cpz:cpz /var/lib/applaunch" /mnt/rootfs/etc/cpz-restore.start \
         && echo "OK: restored launcher state re-owned to cpz" \
         || echo "FAIL: restore leaves cpz state root-owned"
     grep -q "as_root" /mnt/rootfs/usr/local/bin/cpz-desktop \
@@ -663,7 +663,7 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
         && echo "OK: Files/Camera content directories exist" \
         || echo "FAIL: Files/Camera content directories missing"
     grep -q 'home/cpz' /mnt/rootfs/usr/local/bin/cpz-save \
-        && grep -q 'home/cpz' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && grep -q 'home/cpz' /mnt/rootfs/etc/cpz-restore.start \
         && echo "OK: Files/Camera home tree is saved to /cfg and restored" \
         || echo "FAIL: home/cpz missing from persistence save/restore"
     # v0.11: persistence layer
@@ -673,9 +673,18 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -x /mnt/rootfs/usr/local/bin/cpz-save ] \
         && echo "OK: cpz-save present" \
         || echo "FAIL: cpz-save missing"
-    [ -x /mnt/rootfs/etc/local.d/cpz-restore.start ] \
+    [ -x /mnt/rootfs/etc/cpz-restore.start ] \
         && echo "OK: cpz-restore runs at boot" \
-        || echo "FAIL: cpz-restore.start missing"
+        || echo "FAIL: cpz-restore.start missing (boot service broke)"
+    [ -x /mnt/rootfs/etc/init.d/cpz-restore ] \
+        && echo "OK: cpz-restore init script present" \
+        || echo "FAIL: /etc/init.d/cpz-restore missing"
+    [ -L /mnt/rootfs/etc/runlevels/boot/cpz-restore ] \
+        && echo "OK: cpz-restore in boot runlevel (before services)" \
+        || echo "FAIL: cpz-restore not in boot runlevel"
+    [ ! -e /mnt/rootfs/etc/local.d/cpz-restore.start ] \
+        && echo "OK: restore no longer runs after the launcher" \
+        || echo "FAIL: cpz-restore still in local.d (runs after applaunch)"
     [ -x /mnt/rootfs/etc/periodic/hourly/cpz-save ] \
         && echo "OK: hourly snapshots scheduled" \
         || echo "FAIL: no hourly cpz-save cron job"
@@ -727,7 +736,7 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'save.tar.gz.prev' /mnt/rootfs/usr/local/bin/cpz-save \
         && echo "OK: previous archive generation kept" \
         || echo "FAIL: cpz-save does not keep save.tar.gz.prev"
-    grep -q 'cpz-restore.log' /mnt/rootfs/etc/local.d/cpz-restore.start \
+    grep -q 'cpz-restore.log' /mnt/rootfs/etc/cpz-restore.start \
         && echo "OK: restore leaves a trace on /cfg" \
         || echo "FAIL: no restore trace (failures undiagnosable)"
     # v0.21.9: Settings fixes — writable backlight, saved volume at boot,
@@ -771,14 +780,14 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'etc/NetworkManager' /mnt/rootfs/usr/local/bin/cpz-save \
         && echo "OK: whole NM config tree captured by cpz-save" \
         || echo "FAIL: cpz-save does not save /etc/NetworkManager"
-    grep -q 'etc/NetworkManager/system-connections' /mnt/rootfs/etc/local.d/cpz-restore.start \
-        && grep -q 'etc/NetworkManager/conf.d' /mnt/rootfs/etc/local.d/cpz-restore.start \
+    grep -q 'etc/NetworkManager/system-connections' /mnt/rootfs/etc/cpz-restore.start \
+        && grep -q 'etc/NetworkManager/conf.d' /mnt/rootfs/etc/cpz-restore.start \
         && echo "OK: NM profiles + global config restored at boot" \
         || echo "FAIL: NM config missing from cpz-restore"
-    grep -q 'tar -xzpkf' /mnt/rootfs/etc/local.d/cpz-restore.start \
+    grep -q 'tar -xzpkf' /mnt/rootfs/etc/cpz-restore.start \
         && echo "FAIL: restore still passes -k (keep-old-files) — archive is ignored" \
         || echo "OK: restore overwrites with the archived user data"
-    grep -q 'nmcli connection reload' /mnt/rootfs/etc/local.d/cpz-restore.start \
+    grep -q 'nmcli connection reload' /mnt/rootfs/etc/cpz-restore.start \
         && echo "OK: restored NM profiles are re-read via nmcli" \
         || echo "FAIL: NM never re-reads the restored profiles"
     grep -q 'umask 077' /mnt/rootfs/usr/local/bin/cpz-save \
@@ -789,7 +798,7 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     # container simulation (fake /cfg); here only the shipped hooks are
     # checked, because the image is aarch64 and cannot run on the builder.
     grep -q 'shadow-users' /mnt/rootfs/usr/local/bin/cpz-save \
-        && grep -q 'shadow-users' /mnt/rootfs/etc/local.d/cpz-restore.start \
+        && grep -q 'shadow-users' /mnt/rootfs/etc/cpz-restore.start \
         && echo "OK: root/cpz password entries saved to /cfg and merged at boot" \
         || echo "FAIL: password persistence hook missing (shadow-users)"
     # v0.21.0: /cfg card growth (cpz-grow.start) — the device-side half of
@@ -800,11 +809,14 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     [ -x /mnt/rootfs/etc/local.d/cpz-grow.start ] \
         && echo "OK: cpz-grow.start present and executable" \
         || echo "FAIL: cpz-grow.start missing or not executable"
-    ls /mnt/rootfs/etc/local.d/ | sort | awk '
-        /cpz-grow\.start/ {g=NR} /cpz-restore\.start/ {r=NR}
-        END {exit (g && r && g < r) ? 0 : 1}' \
-        && echo "OK: cpz-grow runs before cpz-restore in local.d order" \
-        || echo "FAIL: cpz-grow does not sort before cpz-restore"
+    # v0.21.11: cpz-restore moved to the boot runlevel (before applaunch/
+    # dropbear/networkmanager), so it now runs BEFORE every local.d script.
+    # On a raw-dd card cpz-grow (local.d) creates p3 and reboots; the NEXT
+    # boot's cpz-restore (boot runlevel) then mounts it — its 15 s wait for
+    # /dev/mmcblk0p3 covers that order.
+    [ ! -e /mnt/rootfs/etc/local.d/cpz-restore.start ] \
+        && echo "OK: cpz-restore no longer runs in local.d" \
+        || echo "FAIL: cpz-restore still in local.d (grow ordering undefined)"
     # Alpine 3.24 splits these across /sbin and /usr/sbin (sfdisk, mkfs.ext4,
     # e2fsck, blkid live in /sbin; resize2fs and dumpe2fs live in
     # /usr/sbin). ls with two args exits 1 when either is missing, so test

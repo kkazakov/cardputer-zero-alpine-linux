@@ -116,8 +116,10 @@ if [ -b "$PART_PRE" ] && [ "$(blkid -o value -s TYPE "$PART_PRE" 2>/dev/null || 
         # local packages installed from .apk files are not in any repo
         [ -d "$BK.mnt/apk" ] && cp -a "$BK.mnt/apk" "$BK/" 2>/dev/null || true
         [ -d "$BK.mnt/apk-keys" ] && cp -a "$BK.mnt/apk-keys" "$BK/" 2>/dev/null || true
-        umount "$BK.mnt" || true
-        rmdir "$BK.mnt" 2>/dev/null || true
+        umount "$BK.mnt" 2>/dev/null ||
+            { sync; sleep 1; umount "$BK.mnt" 2>/dev/null; } ||
+            umount -l "$BK.mnt" 2>/dev/null || true
+        mountpoint -q "$BK.mnt" 2>/dev/null || rmdir "$BK.mnt" 2>/dev/null || true
         echo "   /cfg snapshot backed up to $PWD/$BK"
         [ -n "${SUDO_UID:-}" ] && chown -R "$SUDO_UID:${SUDO_GID:-$SUDO_UID}" "$BK" 2>/dev/null || true
     else
@@ -264,26 +266,48 @@ if [ "$HAD_EXT4" = 1 ] && [ -f "$BK/save.tar.gz" ]; then
     echo "== restoring the pre-flash /cfg snapshot =="
     MNT=/tmp/cpz-cfg-rewrite.$$
     mkdir -p "$MNT"
-    if mount -t ext4 -o rw "$PART" "$MNT"; then
-        for f in save.tar.gz save.tar.gz.prev shadow-users pkglist.txt world repositories ntp; do
-            [ -f "$BK/$f" ] && cp -p "$BK/$f" "$MNT/$f" 2>/dev/null || true
-        done
-        if [ -d "$BK/apk" ]; then
-            mkdir -p "$MNT/apk"
-            cp -a "$BK/apk/." "$MNT/apk/" 2>/dev/null || true
+    MOUNTED=0
+    i=0
+    while [ "$i" -lt 5 ]; do
+        if mount -t ext4 -o rw "$PART" "$MNT"; then
+            MOUNTED=1
+            break
         fi
-        if [ -d "$BK/apk-keys" ]; then
-            mkdir -p "$MNT/apk-keys"
-            cp -a "$BK/apk-keys/." "$MNT/apk-keys/" 2>/dev/null || true
-        fi
-        chmod 600 "$MNT/save.tar.gz" "$MNT/save.tar.gz.prev" \
-            "$MNT/shadow-users" "$MNT/pkglist.txt" 2>/dev/null || true
-        sync
-        umount "$MNT" || echo "WARNING: could not unmount $MNT"
-    else
-        echo "WARNING: could not mount $PART rw to restore the snapshot"
+        sleep 1
+        i=$((i + 1))
+    done
+    if [ "$MOUNTED" = 0 ]; then
+        echo "ERROR: cannot mount $PART rw to restore the snapshot; the card could boot an older one." >&2
+        echo "       The pre-flash copy is safe in $PWD/$BK — retry the flash." >&2
+        exit 1
     fi
+    for f in save.tar.gz save.tar.gz.prev shadow-users pkglist.txt world repositories ntp; do
+        [ -f "$BK/$f" ] && cp -p "$BK/$f" "$MNT/$f" 2>/dev/null || true
+    done
+    if [ -d "$BK/apk" ]; then
+        mkdir -p "$MNT/apk"
+        cp -a "$BK/apk/." "$MNT/apk/" 2>/dev/null || true
+    fi
+    if [ -d "$BK/apk-keys" ]; then
+        mkdir -p "$MNT/apk-keys"
+        cp -a "$BK/apk-keys/." "$MNT/apk-keys/" 2>/dev/null || true
+    fi
+    chmod 600 "$MNT/save.tar.gz" "$MNT/save.tar.gz.prev" \
+        "$MNT/shadow-users" "$MNT/pkglist.txt" 2>/dev/null || true
+    sync
+    NEW=$(wc -c < "$MNT/save.tar.gz" 2>/dev/null || echo 0)
+    OLD=$(wc -c < "$BK/save.tar.gz" 2>/dev/null || echo 0)
+    echo "   snapshot rewritten: $NEW bytes (backup: $OLD bytes)"
+    umount "$MNT" 2>/dev/null || { sync; umount -l "$MNT" 2>/dev/null; } || true
     rmdir "$MNT" 2>/dev/null || true
+    if [ "$NEW" = 0 ] || [ "$NEW" != "$OLD" ]; then
+        echo "ERROR: snapshot rewrite verification failed ($NEW != $OLD); refusing to finish." >&2
+        echo "       The pre-flash copy is safe in $PWD/$BK." >&2
+        exit 1
+    fi
+elif [ "$HAD_EXT4" = 1 ]; then
+    echo "ERROR: pre-flash /cfg backup missing; refusing to finish." >&2
+    exit 1
 fi
 
 echo
