@@ -145,6 +145,15 @@ fi
 
 apk info -q > $CFG/pkglist.txt 2>/dev/null
 
+# v0.21.14: the timezone choice. /etc/localtime is a symlink into
+# /usr/share/zoneinfo; save the zone name so a reflash keeps it.
+TZONE=$(readlink /etc/localtime 2>/dev/null | sed 's|.*/zoneinfo/||')
+if [ -n "$TZONE" ]; then
+    printf '%s\n' "$TZONE" > "$CFG/timezone.new" 2>/dev/null &&
+        chmod 644 "$CFG/timezone.new" 2>/dev/null &&
+        mv "$CFG/timezone.new" "$CFG/timezone"
+fi
+
 # v0.21.10: /etc/apk/world is the list of packages the user explicitly
 # added (tailscale, ...). pkglist.txt is every installed package; world is
 # what a fresh image must re-add. Keep both.

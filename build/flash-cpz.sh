@@ -110,7 +110,7 @@ if [ -b "$PART_PRE" ] && [ "$(blkid -o value -s TYPE "$PART_PRE" 2>/dev/null || 
     fi
     if mkdir -p "$BK.mnt" && mount -o ro "$PART_PRE" "$BK.mnt" 2>/dev/null; then
         mkdir -p "$BK"
-        for f in save.tar.gz save.tar.gz.prev shadow-users pkglist.txt world repositories ntp; do
+        for f in save.tar.gz save.tar.gz.prev shadow-users pkglist.txt world repositories ntp timezone; do
             [ -f "$BK.mnt/$f" ] && cp -p "$BK.mnt/$f" "$BK/" 2>/dev/null || true
         done
         # local packages installed from .apk files are not in any repo
@@ -281,7 +281,7 @@ if [ "$HAD_EXT4" = 1 ] && [ -f "$BK/save.tar.gz" ]; then
         echo "       The pre-flash copy is safe in $PWD/$BK — retry the flash." >&2
         exit 1
     fi
-    for f in save.tar.gz save.tar.gz.prev shadow-users pkglist.txt world repositories ntp; do
+    for f in save.tar.gz save.tar.gz.prev shadow-users pkglist.txt world repositories ntp timezone; do
         [ -f "$BK/$f" ] && cp -p "$BK/$f" "$MNT/$f" 2>/dev/null || true
     done
     if [ -d "$BK/apk" ]; then

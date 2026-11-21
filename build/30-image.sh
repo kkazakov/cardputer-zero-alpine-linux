@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.21.13
+VER=0.21.14
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -772,6 +772,15 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q 'CFG/repositories' /mnt/rootfs/usr/local/bin/cpz-save \
         && echo "OK: custom apk repositories saved" \
         || echo "FAIL: custom repositories not saved"
+    [ -x /mnt/rootfs/usr/local/bin/cpz-timezone ] \
+        && echo "OK: timezone helper present" \
+        || echo "FAIL: cpz-timezone missing"
+    grep -q 'CFG/timezone' /mnt/rootfs/usr/local/bin/cpz-save \
+        && echo "OK: timezone choice saved to /cfg" \
+        || echo "FAIL: timezone not saved to /cfg"
+    grep -q 'CFG/timezone' /mnt/rootfs/etc/cpz-restore.start \
+        && echo "OK: saved timezone re-applied at boot" \
+        || echo "FAIL: restore ignores /cfg/timezone"
     [ -f /mnt/rootfs/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch ] \
         && echo "OK: launcher present" \
         || echo "FAIL: launcher missing"

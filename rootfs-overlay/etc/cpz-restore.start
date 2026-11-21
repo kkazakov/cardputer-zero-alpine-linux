@@ -256,6 +256,21 @@ if nmcli -t general status >/dev/null 2>&1; then
         rc-service networkmanager restart >/dev/null 2>&1
 fi
 
+# v0.21.14: re-apply the saved timezone before services (the launcher's
+# clock, crond and the logs all read /etc/localtime at start).
+if [ -s "$CFG/timezone" ]; then
+    ZONE=$(head -1 "$CFG/timezone" 2>/dev/null)
+    case "$ZONE" in
+        */*)
+            if [ -f "/usr/share/zoneinfo/$ZONE" ]; then
+                ln -sf "/usr/share/zoneinfo/$ZONE" /etc/localtime
+                printf '%s\n' "$ZONE" > /etc/timezone 2>/dev/null
+                clog "timezone set to $ZONE"
+            fi
+            ;;
+    esac
+fi
+
 NMPROF=$(ls /etc/NetworkManager/system-connections 2>/dev/null | wc -l)
 clog "done: $NMPROF NetworkManager profile(s) available"
 logger -t cpz-restore \

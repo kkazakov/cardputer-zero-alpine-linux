@@ -1,0 +1,35 @@
+#!/bin/sh
+# /usr/local/bin/cpz-timezone — set/list the system time zone.
+#
+# The image ships Europe/Sofia in rootfs-configure.sh; /etc/localtime is on
+# the rootfs, so without this helper a reflash resets the choice. `set`
+# also runs cpz-save, which records the zone name in /cfg/timezone;
+# cpz-restore re-applies it before services start.
+
+case "${1:-status}" in
+    status)
+        readlink /etc/localtime 2>/dev/null | sed 's|.*/zoneinfo/||'
+        ;;
+    list)
+        find /usr/share/zoneinfo -type f 2>/dev/null |
+            sed 's|/usr/share/zoneinfo/||' |
+            grep '/' | sort
+        ;;
+    set)
+        z=${2:-}
+        if [ -z "$z" ] || [ ! -f "/usr/share/zoneinfo/$z" ]; then
+            echo "cpz-timezone: unknown zone: $z (see cpz-timezone list)" >&2
+            exit 1
+        fi
+        ln -sf "/usr/share/zoneinfo/$z" /etc/localtime
+        printf '%s\n' "$z" > /etc/timezone
+        /usr/local/bin/cpz-save
+        echo "cpz-timezone: set to $z"
+        ;;
+    *)
+        echo "usage: cpz-timezone status | list | set <Region>/<City>" >&2
+        exit 2
+        ;;
+esac
+
+exit 0
