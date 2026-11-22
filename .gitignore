@@ -41,3 +41,4 @@ build/release-stage/
 # local machine/network cheat sheet (never committed)
 local-setup.md
 build/git-key/
+build/ksrc/
