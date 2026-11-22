@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.22.2
+VER=0.22.3
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -560,6 +560,17 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     grep -q "disable_splash=1" /mnt/boot/config.txt \
         && echo "OK: firmware splash disabled" \
         || echo "FAIL: firmware splash still enabled"
+    # v0.22.3: disable-bt + uart0 overlays for LoRa hat (PL011 on GPIO 14/15)
+    grep -q "dtoverlay=disable-bt" /mnt/boot/config.txt \
+        && echo "OK: disable-bt overlay present (Bluetooth disabled for LoRa)" \
+        || echo "FAIL: disable-bt overlay missing — LoRa hat won't work"
+    grep -q "dtoverlay=uart0" /mnt/boot/config.txt \
+        && echo "OK: uart0 overlay present (PL011 routed to GPIO 14/15)" \
+        || echo "FAIL: uart0 overlay missing — no UART on expansion port"
+    # uart0 must come AFTER disable-bt (ordering matters for DT)
+    awk '/disable-bt/{b=NR} /uart0/{u=NR} END{exit(!(b && u && b<u))}' /mnt/boot/config.txt \
+        && echo "OK: uart0 overlay listed after disable-bt (correct ordering)" \
+        || echo "FAIL: uart0 must follow disable-bt in config.txt"
     [ -x /mnt/rootfs/etc/local.d/cpz-hdmi-boot.start ] \
         && echo "OK: HDMI desktop preference re-applied at boot" \
         || echo "FAIL: cpz-hdmi-boot.start missing"

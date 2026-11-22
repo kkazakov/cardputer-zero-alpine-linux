@@ -76,3 +76,16 @@ dtoverlay=bmi270_bmm150_overlay
 # (cpz-desktop / the HDMI app). No firmware rainbow splash, no warnings.
 disable_splash=1
 avoid_warnings=1
+
+# v0.22.3: disable on-board Bluetooth to free PL011 UART for GPIO 14/15.
+# The CardputerZero has only two UARTs: PL011 (ttyAMA0) and mini-UART
+# (ttyS0).  The PL011 can talk to EITHER the Murata BT chip (on internal
+# traces) OR GPIO 14/15 (expansion port, where the Cap LoRa-1262 hat
+# connects), but not both at once.  disable-bt picks the LoRa path.
+#
+# If you need Bluetooth back: remove the disable-bt and uart0 lines,
+# reboot, and the LoRa hat goes dark.  A launcher toggle (similar to
+# Tailscale/HDMI) that writes /boot/config.txt and reboots is the
+# planned UX for switching between them.
+dtoverlay=disable-bt
+dtoverlay=uart0

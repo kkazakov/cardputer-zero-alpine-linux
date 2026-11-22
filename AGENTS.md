@@ -5,10 +5,11 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.22.2** (base repo `main`; the launcher fork is a
-sibling checkout in `launcher/`, branch `alpine`). v0.22.2 adds BMM150
-magnetometer (compass) kernel support so the Compass app can read the
-hardware sensor. v0.20.0 added Files
+Current release: **v0.22.3** (base repo `main`; the launcher fork is a
+sibling checkout in `launcher/`, branch `alpine`). v0.22.3 disables on-board
+Bluetooth (`disable-bt`) and routes the PL011 UART to GPIO 14/15 (`uart0`)
+so the Cap LoRa-1262 hat works on `/dev/ttyAMA0` at 115200 baud. v0.22.2
+added BMM150 magnetometer (compass) kernel support. v0.20.0 added Files
 and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
 startup and opens Files in `/home/cpz`; v0.21.0 makes `/cfg` (CPZDATA)
 cover the whole card on every flash route, including Windows/macOS/Etcher
@@ -240,7 +241,7 @@ complete release. The latest ZIP should also replace the loose image in
 
 ---
 
-# State (v0.22.2)
+# State (v0.22.3)
 
 ## What the image is
 
@@ -498,6 +499,7 @@ not a pledge to close every gap.
 | **RF kill default** | `options rfkill default_state=0` in modprobe.d | Not set | On stock, rfkill is explicitly unblocked at module load. Alpine relies on the kernel default (which is usually 0/unblocked too, but it's not explicit). |
 | **I2C keyboard ignore rule** | `99-ignore-i2c-key.rules` prevents I2C key events from being duplicated as extra input | Not needed | Alpine's single-seat keyboard setup with the corrected keymap avoids the problem differently. |
 | **Framebuffer reset** | `/sys/class/graphics/fb0/device/reset` 0664 root:gpio | Not exposed | Stock exposes the LCD reset line as a sysfs node. Alpine runs the launcher as cpz which doesn't need it (reset is handled by the kernel driver). |
+| **Bluetooth** | BT on PL011 UART | Disabled by default (v0.22.3) | The PL011 UART is shared between the on-board Bluetooth chip and GPIO 14/15 (expansion port / LoRa hat). Only one can be active. Alpine defaults to LoRa (GPIO 14/15); see the LoRa section below for details and the toggle plan. |
 
 ### Software features — working
 
@@ -556,6 +558,68 @@ All four power/function pins default to OFF. The LED class + gpio group
 rules let unprivileged users toggle them. For Alpine, these could be
 controlled directly via `/sys/class/gpio/export` if the gpio group
 permissions are set up, but the convenient LED sysfs interface is absent.
+
+## LoRa hat (Cap LoRa-1262, v0.22.3)
+
+The CardputerZero has only two UART controllers on the SoC:
+
+| UART | Device | Quality | Pins on expansion header |
+|---|---|---|---|
+| PL011 | `/dev/ttyAMA0` | Hardware UART, 48 MHz clock, reliable at any baud | GPIO 14 (TXD), GPIO 15 (RXD) |
+| Mini-UART | `/dev/ttyS0` | Clocked off VPU core clock, baud drifts with core_freq | Not on expansion header |
+
+The Murata Type-1YN Bluetooth/WiFi module connects to one of these UARTs
+through internal board traces. **Both Bluetooth and the external GPIO
+14/15 pins go through the same PL011 controller — only one can be active
+at a time.**
+
+### Default configuration (v0.22.3)
+
+```ini
+dtoverlay=disable-bt   # disable Bluetooth, free PL011
+dtoverlay=uart0        # route PL011 to GPIO 14/15 → /dev/ttyAMA0
+```
+
+This gives the LoRa hat (Cap LoRa-1262, SX1262 serial AT commands) a clean
+UART at 115200 baud on `/dev/ttyAMA0`. Bluetooth is off.
+
+Verified on hardware:
+```
+pin 14 (gpio14): 3f201000.serial function alt0 → UART0 TXD
+pin 15 (gpio15): 3f201000.serial function alt0 → UART0 RXD
+/dev/ttyAMA0: 115200 baud, 48 MHz clock, writable
+```
+
+### Why miniuart-bt didn't work
+
+`dtoverlay=miniuart-bt` (Bluetooth → mini-UART, PL011 → GPIO 14/15)
+was tested and failed: the Broadcom BT chip on this board does not
+respond on the mini-UART (HCI tx timeouts, frame reassembly errors).
+The pinctrl was correct (GPIO 30-33 in ALT5 for mini-UART), the core
+clock was stable at both 250 MHz and 400 MHz, but the chip simply does
+not work through the mini-UART. This is a hardware limitation — the
+Murata module's BT path is wired to the PL011, not the mini-UART.
+
+### Toggle plan: Bluetooth vs LoRa
+
+A launcher toggle (like Tailscale/HDMI) that edits `/boot/config.txt`
+and reboots:
+
+| Mode | config.txt | Bluetooth | LoRa |
+|---|---|---|---|
+| LoRa (default) | `disable-bt` + `uart0` | Off | `/dev/ttyAMA0` on GPIO 14/15 |
+| Bluetooth | no disable-bt, no uart0 | hci0 on PL011 | GPIO 14/15 dark |
+
+The preference persists in `/var/lib/applaunch/lora` (0/1). A boot hook
+(`cpz-lora-boot.start`, similar to `cpz-hdmi-boot.start`) reads the
+preference and writes the right lines to `/boot/config.txt` before the
+next reboot. The launcher page shows a single switch with a note:
+"Bluetooth and LoRa share the same radio path. Toggling reboots the
+device."
+
+The reboot is unavoidable: UART routing and pinctrl are set at boot
+time by the device tree; there is no runtime UART reassignment API in
+the kernel.
 
 ---
 
