@@ -15,6 +15,7 @@
 # Subcommands:
 #   available   exit 0 when installed AND logged in (launcher visibility)
 #   state       print "on"/"off" (daemon process state, for debugging)
+#   ip          print the Tailscale IPv4 address (for UI display)
 #   apply on|off  start/stop the daemon + sync the default runlevel.
 #               Does NOT write the preference: the launcher page owns
 #               /var/lib/applaunch/tailscale, so a slow helper can never
@@ -193,11 +194,15 @@ on)
 off)
     write_pref 0 && apply off
     ;;
+ip)
+    installed || exit 1
+    tailscale ip -4 2>/dev/null || true
+    ;;
 boot)
     boot
     ;;
 *)
-    echo "usage: $0 available|state|apply on|off|on|off|boot" >&2
+    echo "usage: $0 available|state|apply on|off|on|off|ip|boot" >&2
     exit 2
     ;;
 esac

@@ -12,7 +12,7 @@ set -eu
 REPO=/repo
 WORK=/work
 OUT=$REPO/images
-VER=0.22.0
+VER=0.22.2
 IMG=$WORK/cpz-alpine-$VER.img
 DISK_ID=10c0ffee
 
@@ -871,10 +871,22 @@ KVER=$(ls /mnt/rootfs/lib/modules/ | grep 'rpi-v8' | head -1)
     ls /mnt/rootfs/lib/modules/$KVER/extra/ 2>/dev/null || echo "FAIL: no extra modules"
     echo "--- M5 extra modules all present:"
     for m in st7789v_m5stack pwm_bl_m5stack tca8418_keypad_m5stack es8389_m5stack \
-             bq27xxx_battery.ko bq27xxx_battery_i2c m5ioe1 bmi270_core bmi270_i2c; do
+             bq27xxx_battery.ko bq27xxx_battery_i2c m5ioe1 bmi270_core bmi270_i2c \
+             bmc150_magn bmc150_magn_i2c bmc150_magn_bmi270; do
         ls /mnt/rootfs/lib/modules/$KVER/extra/ | grep -q "$m" \
             && echo "OK: $m" || echo "FAIL: $m"
     done
+    echo "--- BMM150 module aliases for udev autoload:"
+    grep -q "bosch,bmm150-bmi270" /mnt/rootfs/lib/modules/$KVER/modules.alias \
+        && echo "OK: bmm150-bmi270 alias" \
+        || echo "FAIL: bmm150-bmi270 alias (run depmod in rootfs)"
+    echo "--- bmi270_bmm150 overlay:"
+    [ -s /mnt/boot/overlays/bmi270_bmm150_overlay.dtbo ] \
+        && echo "OK: bmi270_bmm150_overlay.dtbo" \
+        || echo "FAIL: bmi270_bmm150_overlay.dtbo"
+    grep -q "dtoverlay=bmi270_bmm150_overlay" /mnt/boot/config.txt \
+        && echo "OK: dtoverlay=bmi270_bmm150_overlay in config.txt" \
+        || echo "FAIL: config.txt missing bmi270_bmm150_overlay"
     echo "--- firmware:"
     ls -d /mnt/rootfs/lib/firmware/brcm /mnt/rootfs/lib/firmware/cypress \
           /mnt/rootfs/lib/firmware/synaptics >/dev/null 2>&1 \

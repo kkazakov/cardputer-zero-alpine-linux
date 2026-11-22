@@ -52,7 +52,8 @@ freetype libinput libxkbcommon dbus-libs glib curl libstdc++ bash
 networkmanager networkmanager-openrc networkmanager-wifi networkmanager-cli
 wpa_supplicant sudo shadow
 ffmpeg v4l-utils-libs cjson libcamera libcamera-ipa libcamera-raspberrypi
-sfdisk e2fsprogs e2fsprogs-extra blkid"
+sfdisk e2fsprogs e2fsprogs-extra blkid
+python3 py3-pillow py3-dbus py3-gobject3"
 
 # --- builder container must exist (owns the /work volume, runs 30-image) ---
 if ! docker exec "$BUILDER" true >/dev/null 2>&1; then

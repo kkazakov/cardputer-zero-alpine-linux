@@ -10,6 +10,10 @@ build/verification-report.txt
 # build/INPUTS.md and the script)
 build/apps-src/
 
+# built app packages (build/build-app-package.sh output)
+build/packages/
+build/.pkg-*
+
 # secrets — user wifi credentials, NEVER commit (see AGENTS.md)
 build/wifi-secret/
 

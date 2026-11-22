@@ -356,6 +356,61 @@ The verification pass writes `build/verification-report.txt` and must
 contain **zero** `FAIL:` lines (it ends with `verification clean`). A
 `FAIL:` is a blocker, not a warning.
 
+## Building apps for the device
+
+The image ships with Compass as a built-in app. Additional apps can be
+built from their GitHub source repos into installable `.tar.gz` packages
+and pushed to a running device over SSH — no reflash needed.
+
+### Build a package
+
+```sh
+sh build/build-app-package.sh <github-url> [<ref>] [--clean]
+```
+
+Clones (or updates) the app source, builds it natively (aarch64/musl)
+inside the `cpz-apps-build` container, and writes a `.tar.gz` to
+`build/packages/`. Pass `--clean` to delete the cached build directory
+first (useful when the source has changed).
+
+The script auto-detects the build system:
+- `app-builder.json` → metadata-driven Python apps
+- `CMakeLists.txt` → CMake/Ninja C++ apps
+- `Makefile` → make
+- `SConstruct` → scons
+
+### Install to a device
+
+```sh
+sh build/install-via-ssh.sh <package.tar.gz> <user@host> [--restart-applaunch]
+```
+
+Pipes the package over SSH (scp is unavailable — dropbear has no
+sftp-server), extracts it to `/`, and optionally restarts the launcher
+so the new app appears in the carousel immediately.
+
+### Available apps
+
+| App | Source repo | Type | Dependencies | Notes |
+|---|---|---|---|---|
+| **Compass** | `CardputerZero/Compass` | CMake/C++ | BMM150 magnetometer (kernel, v0.22.2+) | Shows heading from BMI270+BMM150 IIO sensors. Displays "Compass sensors unavailable" when the magnetometer is missing. |
+| **Mouse Jiggler** | `jiriks74/cardputer-zero-mouse-jiggler` | app-builder.json / Python | `python3 py3-pillow py3-dbus py3-gobject3` | Bluetooth HID mouse. Needs `py3-gobject3` for the pairing agent (without it the device is not discoverable by a computer). |
+
+### Example: build and install Mouse Jiggler
+
+```sh
+# Build from GitHub (takes ~2 min on first run)
+sh build/build-app-package.sh https://github.com/jiriks74/cardputer-zero-mouse-jiggler
+
+# Install to a device on the same network/tailnet
+sh build/install-via-ssh.sh \
+  build/packages/cpz-mouse-jiggler-0.2.7.tar.gz \
+  cpz@100.101.102.97 \
+  --restart-applaunch
+
+# The app now appears in the carousel. ENTER to launch.
+```
+
 ## Flash (preserves your data)
 
 ```sh

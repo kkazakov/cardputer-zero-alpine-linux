@@ -5,8 +5,10 @@ CardputerZero. Everything in **Process** is mandatory, not advice. The
 **State** and **Traps** sections are the accumulated field knowledge —
 read them before touching anything.
 
-Current release: **v0.21.7** (base repo `main`; the launcher fork is a
-sibling checkout in `launcher/`, branch `alpine`). v0.20.0 added Files
+Current release: **v0.22.2** (base repo `main`; the launcher fork is a
+sibling checkout in `launcher/`, branch `alpine`). v0.22.2 adds BMM150
+magnetometer (compass) kernel support so the Compass app can read the
+hardware sensor. v0.20.0 added Files
 and Camera as default launcher apps; v0.20.1 fixes MIPI-CSI camera
 startup and opens Files in `/home/cpz`; v0.21.0 makes `/cfg` (CPZDATA)
 cover the whole card on every flash route, including Windows/macOS/Etcher
@@ -238,7 +240,7 @@ complete release. The latest ZIP should also replace the loose image in
 
 ---
 
-# State (v0.21.7)
+# State (v0.22.2)
 
 ## What the image is
 
@@ -352,6 +354,208 @@ Added/fixed (all in `launcher/`):
   registration (hidden until installed and logged in), plus the
   `Launch` availability re-poll that makes the card appear at runtime.
 - `deploy/alpine/applaunch.initd|confd` (cpz user, log ownership).
+
+## Compass (BMM150 magnetometer, v0.22.2)
+
+The CardputerZero has a Bosch BMM150 3-axis magnetometer connected to the
+BMI270 IMU's auxiliary I2C bus. The Compass app uses the Linux IIO
+interface to read heading from the combined accelerometer + magnetometer
+data.
+
+### Hardware chain
+
+```
+BMM150 (addr 0x10) → BMI270 AUX I2C → BMI270 (addr 0x68 on i2c1) → SoC
+```
+
+- **BMI270** (6-axis IMU): `/sys/bus/iio/devices/iio:device0`
+  Accelerometer + gyroscope. Driver: `bmi270_core.ko` + `bmi270_i2c.ko`
+  (harvested from the M5 stock image).
+- **BMM150** (3-axis magnetometer): `/sys/bus/iio/devices/iio:device2`
+  Magnetometer. Driver: `bmc150_magn.ko` + `bmc150_magn_bmi270.ko`
+  (built from M5 vendor source at `vendor/m5stack-linux-dtoverlays/`).
+  The `bmc150_magn_bmi270` driver communicates with the BMM150 through
+  the BMI270's auxiliary I2C bus (regmap bridge).
+
+### Kernel modules
+
+| Module | Source | Purpose |
+|---|---|---|
+| `bmi270_core.ko`, `bmi270_i2c.ko` | M5 stock image harvest | BMI270 IMU driver |
+| `bmc150_magn.ko` | Built from `vendor/.../imu-1.0/magnetometer/` | Core BMM150/BMC150 magnetometer driver |
+| `bmc150_magn_bmi270.ko` | Built from same | BMI270 AUX bus transport (regmap bridge) |
+| `bmc150_magn_i2c.ko` | Built from same | Direct I2C transport (not used on this board) |
+
+### Device tree overlay
+
+`bmi270_bmm150_overlay.dtbo` (source: `vendor/.../imu-1.0/bmi270_bmm150_overlay.dts`):
+- Fragment 0: labels the BMI270 node (`bmi270: imu@68`) on i2c1 for
+  phandle reference. The node itself usually exists already from
+  `cardputerzero-overlay.dtbo`; this fragment adds the label.
+- Fragment 1: creates the BMM150 platform device (`magnetometer@10`) with
+  `compatible = "bosch,bmm150-bmi270"` and `bmi270-parent = <&bmi270>`.
+  The `bmc150_magn_bmi270` driver matches this compatible and finds the
+  parent regmap via the phandle.
+
+### How the Compass app finds sensors
+
+See `build/apps-src/Compass/src/models/compass_model.cpp`:
+1. Probes `/sys/bus/iio/devices/iio:device0` for BMI270 (accel + gyro).
+2. Probes `/sys/bus/iio/devices/iio:device2` for BMM150 (magnetometer).
+3. If the magnetometer is missing, the app shows "Compass sensors
+   unavailable" and retries every 5 s.
+4. With both sensors present, it reads raw accel/mag data through the IIO
+   sysfs interface (`in_accel_*_raw`, `in_magn_*_raw`) and computes
+   heading via `compass_pose.cpp`.
+
+### Verification
+
+```sh
+# Check sensors exist
+ls /sys/bus/iio/devices/iio:device0/name   # bmi270
+ls /sys/bus/iio/devices/iio:device2/name   # bmm150
+
+# Read raw magnetometer data (values change with device orientation)
+cat /sys/bus/iio/devices/iio:device2/in_magn_x_raw
+cat /sys/bus/iio/devices/iio:device2/in_magn_y_raw
+cat /sys/bus/iio/devices/iio:device2/in_magn_z_raw
+
+# Check kernel modules
+lsmod | grep bmc150
+# bmc150_magn_bmi270 12288 0 - Live ...
+# bmc150_magn        20480 1 bmc150_magn_bmi270, Live ...
+```
+
+### Build notes
+
+The BMM150 modules are built against the RPi kernel headers
+(`6.18.33+rpt-rpi-v8`) in a Debian Trixie ARM64 container (glibc
+required — the kernel's `modpost` tool is a glibc binary that Alpine's
+musl+gcompat cannot fully run). The build is manual:
+```sh
+# In a Debian arm64 container with kernel headers at $KDIR:
+make -C $KDIR M=$PWD ARCH=arm64 \
+    CONFIG_BMC150_MAGN=m \
+    CONFIG_BMC150_MAGN_I2C=m \
+    CONFIG_BMC150_MAGN_BMI270=m \
+    modules
+```
+
+The modules are copied to `harvest/modules/$KVER/extra/` and the overlay
+to `harvest/boot/overlays/`. `rootfs-configure.sh` runs `depmod -a` to
+generate the module aliases for udev autoload (the `compatible` string
+`bosch,bmm150-bmi270` triggers `bmc150_magn_bmi270`).
+
+### Trap: the stock M5 image does NOT have BMM150 modules
+
+The harvest from the stock M5 image (`2026-06-08`) only contains
+`bmi270_core.ko` and `bmi270_i2c.ko` — no magnetometer modules. The
+stock overlay `cardputerzero-overlay.dtbo` contains the BMI270 node but
+not the BMM150. This is why a fresh Alpine build shows the BMI270 but
+no magnetometer: the kernel simply has no driver for it. On the stock OS
+the compass may work through a different code path (userspace I2C, or a
+different kernel build), but the Alpine Compass app uses IIO exclusively.
+
+### Trap: do not build modules in Alpine containers
+
+The RPi kernel's `modpost` is a glibc aarch64 binary. Alpine's musl libc
++ gcompat can compile the C sources but `modpost` fails with
+`__isoc23_strtoul: symbol not found`. Build in a Debian ARM64 container
+instead (see `build/ksrc/` and the `cpz-modbuild` container pattern).
+
+## Feature gap: Alpine vs. stock CardputerZero OS
+
+This section tracks features present in the original M5 Debian-based OS
+that are missing or work differently on Alpine. It is a living inventory,
+not a pledge to close every gap.
+
+### Hardware features — working
+
+| Feature | Hardware | Driver / path | Status |
+|---|---|---|---|
+| 6-axis IMU (accel + gyro) | BMI270 | `bmi270_core/i2c` → iio:device0 | OK |
+| 3-axis magnetometer | BMM150 (via BMI270 AUX) | `bmc150_magn(_bmi270)` → iio:device2 | OK (v0.22.2) |
+| Battery gauge | BQ27220 | `bq27xxx_battery_i2c` → /sys/class/power_supply/bq27220-0 | OK |
+| Audio codec | ES8389 | `es8389_m5stack` → ALSA card 0 | OK |
+| LCD panel | ST7789V | `st7789v_m5stack` → /dev/fb1 | OK |
+| Keyboard | TCA8418 | `tca8418_keypad_m5stack` → /dev/input/event0 | OK |
+| RTC | RX8130 | `rtc_ds1307` → /dev/rtc0 | OK |
+| PWM backlight | SoC PWM 0 | `pwm_bl_m5stack` → /sys/class/backlight | OK |
+| IR receiver | GPIO 13 | `gpio_ir_recv` → /dev/lirc0 | OK |
+| IR transmitter | GPIO 12 (PWM) | `pwm_ir_tx` → /dev/lirc1 | OK |
+| Camera | IMX219 MIPI-CSI | `imx219` + libcamera → /dev/video* | OK |
+| Wi-Fi | CYW4343A2 (SDIO) | `brcmfmac` → wlan0 | OK |
+| Bluetooth | CYW4343A2 (UART) | `hci_uart` → hci0 | OK |
+| USB Ethernet | SR9900 (USB-A) | `r8152` patched → eth0 | OK |
+| HDMI display | VC4 KMS | `vc4-kms-v3d` → /dev/fb0 (sway) | OK |
+
+### Hardware features — gaps
+
+| Feature | Stock OS | Alpine | Details |
+|---|---|---|---|
+| **GPIO expander power/LED control** | LED class devices for USB/Grove/ext power pins, accessible by `gpio` group | Module loaded but no userspace access | M5IOE1 pins 0,3,12 + SoC GPIO 4 control power to USB port, Grove 5V, external 5V, and Grove function. Stock ships `60-cardputerzero-leds.rules` (udev) and `cardputerzero-leds.conf` (tmpfiles) to set 0664 root:gpio. Alpine doesn't apply these. |
+| **ALSA saved state** | `/var/lib/alsa/asound.state` shipped in stock image | Not present | ES8389 mixer starts with kernel defaults. Volume keys work (amixer DACL/DACR) but other mixer settings (ADC mux, PGA gains, ALC) are not restored from a known-good state. |
+| **RF kill default** | `options rfkill default_state=0` in modprobe.d | Not set | On stock, rfkill is explicitly unblocked at module load. Alpine relies on the kernel default (which is usually 0/unblocked too, but it's not explicit). |
+| **I2C keyboard ignore rule** | `99-ignore-i2c-key.rules` prevents I2C key events from being duplicated as extra input | Not needed | Alpine's single-seat keyboard setup with the corrected keymap avoids the problem differently. |
+| **Framebuffer reset** | `/sys/class/graphics/fb0/device/reset` 0664 root:gpio | Not exposed | Stock exposes the LCD reset line as a sysfs node. Alpine runs the launcher as cpz which doesn't need it (reset is handled by the kernel driver). |
+
+### Software features — working
+
+| Feature | Alpine implementation | Notes |
+|---|---|---|
+| APPLaunch launcher | Fork on `alpine` branch, musl | Home carousel: Settings, CLI, SSH, IP Panel, Files, Camera, Calculator, HDMI, Tailscale |
+| Calculator | Native FBDEV/EVDEV patch | |
+| Files | Built from source, v1.0.3 tree | |
+| Camera | Built from source, v1.0.2 (libcamera 0.7.1) | Camera 1.0.3+ needs libcamera 0.7.2/0.8 |
+| HDMI desktop | sway + waybar, on-demand via `cpz-desktop` | |
+| Tailscale VPN | Optional, hidden until installed + logged in | |
+| Compass | Pre-built musl binary from `cpz-compass-1.0.1.tar.gz` | Requires BMM150 (working since v0.22.2) |
+| SSH | dropbear | No scp (no sftp-server) |
+| Networking | NetworkManager | Stock uses ifupdown + wpa_supplicant directly |
+| Bluetooth | BlueZ 5 + btmgmt | HID server running (mouse-jiggler), no audio profiles |
+| Init system | OpenRC | Stock uses systemd |
+| libc | musl | Stock uses glibc; .deb apps are glibc and don't run |
+
+### Software features — gaps / intentionally removed
+
+| Feature | Status | Reason |
+|---|---|---|
+| App Store | Removed | .deb-based store; glibc binaries don't run on Alpine musl |
+| Demo games (Snake, Tank) | Removed | Part of the store ecosystem |
+| Python terminal | Removed | Part of the store ecosystem; user can `apk add python3` |
+| Non-English READMEs | Removed | Launcher fork cleanup |
+| systemd / timedatectl | Replaced | OpenRC + hwclock |
+| `passwd` (busybox) | Replaced | shadow's setuid `/usr/bin/passwd` (busybox is not setuid) |
+| ifupdown / wpa_supplicant (standalone) | Replaced | NetworkManager owns all interfaces |
+| `.deb` package manager | Replaced | apk (Alpine Package Keeper) |
+| PulseAudio | Not present | ALSA directly (amixer for volume); no sound server |
+| Bluetooth audio (A2DP/HSP) | Not configured | BlueZ runs, HID only; audio profiles need pulseaudio/pipewire |
+| Swap | Not configured | 447 MB RAM, no swap file/partition |
+| `scp` / sftp-server | Not available | dropbear lacks sftp subsystem; use `cat file \| ssh ... 'cat > /path'` |
+
+### GPIO expander (M5IOE1) pin map
+
+The M5IOE1 at I2C address 0x4f provides 14 extra GPIO pins with PWM capability.
+These are the pins defined in the original overlay:
+
+| M5IOE1 pin | Label | Purpose | LED class (stock) |
+|---|---|---|---|
+| 0 | `ext_usb_gpio_fun_pin` | USB port function select | `ext_usb_gpio_fun` |
+| 1 | — | (unused in overlay) | — |
+| 2 | — | TCA8418 reset | — |
+| 3 | `grove_5v_out_pin` | Grove port 5V power | `grove_5v_out` |
+| 4 | — | (unused in overlay) | — |
+| 7 | — | Caps lock LED | — |
+| 8 | — | FN LED | — |
+| 10 | — | Table-select LED | — |
+| 12 | `ext_5v_out_pin` | External 5V output | `ext_5v_out` |
+
+SoC GPIO 4 (`grove_fun_pins`): Grove port function select, LED class `grove_fun`.
+
+All four power/function pins default to OFF. The LED class + gpio group
+rules let unprivileged users toggle them. For Alpine, these could be
+controlled directly via `/sys/class/gpio/export` if the gpio group
+permissions are set up, but the convenient LED sysfs interface is absent.
 
 ---
 
@@ -645,7 +849,7 @@ The upstream store is gone from the fork, but the apps are relevant:
 | `build/test-cpz-grow.sh` | Container simulation of `cpz-grow.start` (run with `--privileged`) |
 | `build/release-assets/` | Windows/macOS flashers packaged into each GitHub release ZIP |
 | `docs/RELEASE-README.txt`, `docs/RELEASE-NOTES-v*.md` | release ZIP readme + GitHub release description |
-| `build/boot-config/` | `cmdline.txt` (serial-only console), `config.txt` (splash off, overlays) |
+| `build/boot-config/` | `cmdline.txt` (serial-only console), `config.txt` (splash off, overlays), `bmm150-magnetometer-overlay.dts` (corrected overlay source) |
 | `rootfs-overlay/etc/local.d/` | `cpz-grow.start` (first, alphabetically), `cpz-restore.start`, `cpz-hdmi-boot.start`, `cpz-audio.start`, `cpz-wifi.start`, `cpz-leds.start`, `console.start` |
 | `rootfs-overlay/etc/udev/rules.d/` | `99-cpz-device-groups.rules` (i2c/rtc/audio/dma_heap groups) |
 | `rootfs-overlay/etc/sudoers.d/cpz` | NOPASSWD grant (forced 0440 by `rootfs-configure.sh`) |

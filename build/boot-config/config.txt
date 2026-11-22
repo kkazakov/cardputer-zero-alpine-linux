@@ -67,6 +67,11 @@ dtoverlay=gpio-ir,gpio_pin=13,gpio_pull=up
 dtoverlay=pwm-ir-tx,gpio_pin=12,func=4
 dtoverlay=spk-gpio24-high-overlay
 
+# v0.22.1: BMM150 magnetometer (compass) behind the BMI270 auxiliary I2C bus.
+# The overlay creates the magnetometer platform device; the bmc150_magn_bmi270
+# module (in extra/) probes it and exposes /sys/bus/iio/devices/iio:device2.
+dtoverlay=bmi270_bmm150_overlay
+
 # v0.18.0: HDMI must stay dark until the on-demand desktop starts
 # (cpz-desktop / the HDMI app). No firmware rainbow splash, no warnings.
 disable_splash=1

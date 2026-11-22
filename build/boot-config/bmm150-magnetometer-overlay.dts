@@ -1,0 +1,54 @@
+// CardputerZero BMM150 magnetometer overlay for Alpine Linux.
+//
+// The BMI270 IMU node (imu@68 on i2c1) is already provided by
+// cardputerzero-overlay.dtbo, but without the bmi270 label required
+// by the BMM150 magnetometer driver's phandle reference.
+//
+// This overlay adds the label to the existing BMI270 node and
+// registers the BMM150 magnetometer as a platform device that
+// communicates through the BMI270 auxiliary I2C bus.
+//
+// Requires: bmc150_magn.ko, bmc150_magn_bmi270.ko
+
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "brcm,bcm2835";
+
+    // Fragment 0: add the bmi270 label to the existing imu@68 node
+    // on i2c1. This is a no-op on the hardware (the node already exists)
+    // but exports the label for the BMM150 phandle reference.
+    fragment@0 {
+        target = <&i2c1>;
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            bmi270: imu@68 {
+                compatible = "bosch,bmi270";
+                reg = <0x68>;
+                status = "okay";
+            };
+        };
+    };
+
+    // Fragment 1: register the BMM150 magnetometer platform device.
+    // The bmc150_magn_bmi270 driver matches "bosch,bmm150-bmi270"
+    // and communicates with the magnetometer through the BMI270
+    // auxiliary I2C bus.
+    fragment@1 {
+        target-path = "/";
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            bmm150: magnetometer@10 {
+                compatible = "bosch,bmm150-bmi270";
+                bmi270-parent = <&bmi270>;
+                reg = <0x10>;
+                status = "okay";
+            };
+        };
+    };
+};

@@ -17,6 +17,11 @@ echo "== grafting kernel modules =="
 mkdir -p /lib/modules
 cp -a "$H/modules/$KVER" /lib/modules/
 
+# v0.22.1: regenerate module deps + aliases so new out-of-tree modules
+# (bmc150_magn) get proper modaliases for udev autoload at boot.
+echo "== regenerating module dependencies =="
+depmod -a -b / $KVER 2>/dev/null || echo "WARN: depmod failed (non-fatal; udev may still load by direct alias)"
+
 echo "== grafting firmware =="
 mkdir -p /lib/firmware
 cp -a "$H/firmware/brcm" "$H/firmware/cypress" "$H/firmware/synaptics" /lib/firmware/
