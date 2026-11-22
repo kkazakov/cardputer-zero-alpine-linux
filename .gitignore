@@ -33,3 +33,6 @@ launcher/
 
 # release staging (the ZIP itself is under images/, already ignored)
 build/release-stage/
+
+# local machine/network cheat sheet (never committed)
+local-setup.md
